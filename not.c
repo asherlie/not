@@ -13,7 +13,7 @@ void* accept_th(void* v_sock){
 
       int peer_sock;
       while(1){
-            if((peer_sock = accept(local_sock, (struct sockaddr*)&addr, &slen)) != -1);
+            if((peer_sock = accept(local_sock, (struct sockaddr*)&addr, &slen)) != -1){};
       }
 }
 /* end host */
@@ -35,6 +35,9 @@ void* accept_th(void* v_sock){
  */
 void* connect_th(char* ip){
       int sock = socket(AF_INET, SOCK_STREAM, 0);
+      (void)sock;
+      (void)ip;
+      return NULL;
 }
 /* end client */
 
