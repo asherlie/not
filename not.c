@@ -2,18 +2,19 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include "not.h"
 #include "shared.h"
 
 /* host */
-void* accept_th(void* v_sock){
-      int local_sock = *((int*)v_sock);
+void* accept_th(void* arg_v){
+      struct accept_th_arg* arg = (struct accept_th_arg*)arg_v;
       struct sockaddr_in addr = {0};
       /* not sure that this assignment is necessary */
       socklen_t slen = sizeof(struct sockaddr_in);
 
       int peer_sock;
       while(1){
-            if((peer_sock = accept(local_sock, (struct sockaddr*)&addr, &slen)) != -1){};
+            if((peer_sock = accept(arg->local_sock, (struct sockaddr*)&addr, &slen)) != -1){};
       }
 }
 /* end host */
