@@ -1,5 +1,5 @@
 #define PORT 2390
-typedef enum msgtype {REQ = 0}msgtype_t;
+typedef enum msgtype {REQ = 0, UID_ALERT}msgtype_t;
 
 struct node{
       int uid, sock;
@@ -16,6 +16,9 @@ struct msg{
       msgtype_t type;
       void* buf;
       int buf_sz;
+
+      /* useful for setting uid */
+      struct node* me;
 };
 
 /* buffer contains a request_package when a REQ message is sent */
