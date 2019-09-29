@@ -9,11 +9,11 @@
 #include "not.h"
 #include "shared.h"
 
-int uid = 0;
+int UID_ASN = 0;
 
 /* TODO: what happens when an internal node disconnects? */
 int assign_uid(){
-      return uid++;
+      return UID_ASN++;
 }
 
 /* host */
@@ -54,10 +54,27 @@ void* connect_th(char* ip){
 }
 /* end client */
 
+/* spec:
+ *    for REQ
+ *          buf contains a struct request_package
+ *          buf contains ip of final destination k
+ */
 void send_msg(int sock, msgtype_t msgtype, void* buf, int buf_sz){
       send(sock, &msgtype, sizeof(msgtype_t), 0);
       send(sock, &buf_sz, sizeof(int), 0);
       send(sock, buf, buf_sz, 0);
+}
+
+void join_network(struct node* me, char* master_addr){
+      me->sock = socket(AF_INET, SOCK_STREAM, 0);
+
+      struct sockaddr_in addr;
+      addr.sin_family = AF_INET;
+      addr.sin_port = PORT;
+
+      inet_aton(master_addr, &addr.sin_addr);
+
+      connect(me->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
 }
 
 /* *addr is optionally set to the addrss of the initial sender */
@@ -83,10 +100,32 @@ void handle_msg(struct msg m){
       }
 }
 
+/* node/net operations */
+struct node* create_node(int uid, struct in_addr addr){
+      struct node* ret = malloc(sizeof(struct node));
+      ret->uid = uid;
+      ret->addr = addr;
+      return ret;
+}
+
+void init_sub_net(struct sub_net* sn){
+      sn->n_direct = 0;
+      sn->direct_cap = 20;
+      sn->direct_peers = malloc(sizeof(struct node)*sn->direct_cap);
+}
+
 int main(int a, char** b){
+      struct sub_net sn;
+      init_sub_net(&sn);
+
       (void)b;
       /* we're taking on master role */
       if(a == 1){
+            struct in_addr dummy;
+            sn.me = create_node(assign_uid(), dummy);
+      }
+      else{
+            join_network(sn.me, b[1]);
       }
       assert(sizeof(char) == 1);
 }

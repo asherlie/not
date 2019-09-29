@@ -2,7 +2,7 @@
 typedef enum msgtype {REQ = 0}msgtype_t;
 
 struct node{
-      int uid;
+      int uid, sock;
       struct in_addr addr;
 };
 
@@ -16,4 +16,10 @@ struct msg{
       msgtype_t type;
       void* buf;
       int buf_sz;
+};
+
+/* buffer contains a request_package when a REQ message is sent */
+struct request_package{
+      int dest_uid;
+      char addr_str[50];
 };
