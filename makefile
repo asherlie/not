@@ -1,4 +1,4 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -Werror -Wpedantic
+CFLAGS=-Wall -Wextra -Werror -Wpedantic -lpthread
 
 not: not.c
