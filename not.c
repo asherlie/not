@@ -98,8 +98,10 @@ void* accept_th(void* arg_v){
       struct accept_th_arg* arg = (struct accept_th_arg*)arg_v;
       struct sockaddr_in addr = {0};
 
+      /*if(arg->master_node && listen(arg->local_sock, 0) == -1)perror("listen");*/
+      if(listen(arg->local_sock, 0) == -1)perror("listen");
+
       printf("listening on sock %i\n", arg->local_sock);
-      listen(arg->local_sock, 0);
 
       /* not sure that this assignment is necessary */
       socklen_t slen = sizeof(struct sockaddr_in);
@@ -246,6 +248,7 @@ void join_network(struct node** me, char* master_addr, int local_sock){
 }
 
 int main(int a, char** b){
+      if(a != 3)return EXIT_FAILURE;
       /* TODO: destroy this */
       pthread_mutex_init(&uid_lock, NULL);
       int local_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -256,17 +259,26 @@ int main(int a, char** b){
       struct accept_th_arg ata;
       ata.local_sock = local_sock;
       /* expecting ./not -m <ip> */
-      ata.master_node = a == 3;
+      /*ata.master_node = a == 3;*/
+      ata.master_node = *b[1] == '-';
 
-      struct sockaddr_in master_addr;
-      master_addr.sin_port = PORT;
-      master_addr.sin_family = AF_INET;
+      struct sockaddr_in s_addr;
+      s_addr.sin_port = PORT;
+      s_addr.sin_family = AF_INET;
+
+      /* this is for accept thread */
+      inet_aton((ata.master_node) ? b[2] : b[1], &s_addr.sin_addr);
+      /*
+       * this is a bad solution - we need to be able to bind to an address
+       * that others will know
+       * s_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+      */
+
+      if(bind(local_sock, (struct sockaddr*)&s_addr, sizeof(struct sockaddr_in)) == -1)perror("bind");
 
       if(ata.master_node){
-            inet_aton(b[2], &master_addr.sin_addr);
             ata.pot_cap = 100;
             ata.pot_peers = calloc(ata.pot_cap, sizeof(int));
-            bind(local_sock, (struct sockaddr*)&master_addr, sizeof(struct sockaddr_in));
       }
       ata.me = sn.me;
       /*ata.local_sock = */
@@ -276,11 +288,18 @@ int main(int a, char** b){
 
       /* we're taking on master role */
       if(ata.master_node){
-            sn.me = create_node(assign_uid(), master_addr.sin_addr, local_sock);
+            sn.me = create_node(assign_uid(), s_addr.sin_addr, local_sock);
             while(1)usleep(1000);
       }
       else{
-            join_network(&sn.me, b[1], local_sock);
+            /*join_network(&sn.me, b[2], local_sock);*/
+            /* should this connector sock have the ip i want ppl to connect
+             * to when they hit me up?
+             * after i request a formal connection
+             * yes, right
+             * can two socks have same addr
+             */
+            join_network(&sn.me, b[2], socket(AF_INET, SOCK_STREAM, 0));
       }
       assert(sizeof(char) == 1);
 }
