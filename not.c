@@ -183,7 +183,8 @@ void init_sub_net(struct sub_net* sn){
  * }
 */
 
-void connect_sock(struct node* me, struct in_addr inet_addr){
+/* returns the socket of the peer - this is also stored in rta->sock */
+int connect_sock(struct node* me, struct in_addr inet_addr){
       pthread_t read_pth;
       struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
       rta->sock = me->sock;
@@ -197,6 +198,8 @@ void connect_sock(struct node* me, struct in_addr inet_addr){
       rta->sock = connect(me->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
 
       pthread_create(&read_pth, NULL, read_th, &rta);
+
+      return rta->sock;
 }
 
 /* this is called by a client to join the network
