@@ -1,13 +1,31 @@
 #define PORT 2390
 
 typedef enum msgtype {
-      REQ = 0, UID_REQ, UID_ALERT
+      REQ = 0, UID_REQ, UID_ALERT, MSG_BROKEN
       }msgtype_t;
 
 struct node{
       int uid, sock;
       struct in_addr addr;
 };
+
+/*
+ * i connect to master node, request uid from master node
+ * based on my uid, i can assume the size of the network
+ * 
+ * using this information i will request the master node to find the
+ * node i need to connect to
+ * REQ(node 1);
+ * REQ(node 2);
+ * REQ(node 4);
+ * 
+ * master node will pass along my request, as well as my address and uid, and most importantly
+ * the recipient's uid
+ * 
+ * once the message gets to the recipient, recipient will connect to my address
+ * recipient adds my information to their struct sub_net in the form of a node with my socket and uid
+*/
+
 
 struct sub_net{
       int n_direct, direct_cap;

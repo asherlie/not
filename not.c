@@ -42,8 +42,12 @@ void send_uid_alert(int sock){
 struct msg read_msg(int sock){
       struct msg ret;
 
-      read(sock, &ret.type, sizeof(msgtype_t));
-      read(sock, &ret.buf_sz, sizeof(int));
+      if(read(sock, &ret.type, sizeof(msgtype_t)) == -1 ||
+         read(sock, &ret.buf_sz, sizeof(int)) == -1){
+      
+            ret.type = MSG_BROKEN;
+            return ret;
+      }
 
       /* free buf */
       ret.buf = calloc(ret.buf_sz, sizeof(char));
@@ -52,10 +56,12 @@ struct msg read_msg(int sock){
       return ret;
 }
 
-void handle_msg(struct msg m, struct read_th_arg* rta){
+_Bool handle_msg(struct msg m, struct read_th_arg* rta){
       switch(m.type){
+            case MSG_BROKEN:
+                  return 0;
             case UID_REQ:
-                  if(!rta->master_node)return;
+                  if(!rta->master_node)return 1;
                   send_uid_alert(rta->sock);
                   break;
             case UID_ALERT:
@@ -65,6 +71,7 @@ void handle_msg(struct msg m, struct read_th_arg* rta){
              */
             case REQ:;
       }
+      return 1;
 }
 
 #if 0
@@ -76,10 +83,14 @@ void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
       struct msg m; 
       m.me = rta->me;
-      while(1){
-            m = read_msg(rta->sock);
-            handle_msg(m, rta);
-      }
+      while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta));
+      /*
+       * while(1){
+       *       m = read_msg(rta->sock);
+       *       handle_msg(m, rta);
+       * }
+      */
+      return NULL;
 }
 
 /* host */
@@ -188,6 +199,9 @@ void connect_sock(struct node* me, struct in_addr inet_addr){
       pthread_create(&read_pth, NULL, read_th, &rta);
 }
 
+/* this is called by a client to join the network
+ * addr should be to the master node
+ */
 void join_network(struct node** me, char* master_addr, int local_sock){
        struct in_addr dummy;
        *me = create_node(-1, dummy, local_sock);
@@ -201,6 +215,13 @@ void join_network(struct node** me, char* master_addr, int local_sock){
       */
       /* this connects and starts a read thread */
       connect_sock(*me, addr);
+
+      /*
+       * send a uid_request
+       * send_msg();
+       * wait below for uid assignment
+       * then send log2(uid) connection polls
+      */
 
       /*int master_sock = */
 
