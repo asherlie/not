@@ -98,6 +98,7 @@ void* accept_th(void* arg_v){
       struct accept_th_arg* arg = (struct accept_th_arg*)arg_v;
       struct sockaddr_in addr = {0};
 
+      printf("listening on sock %i\n", arg->local_sock);
       listen(arg->local_sock, 0);
 
       /* not sure that this assignment is necessary */
@@ -217,8 +218,9 @@ void join_network(struct node** me, char* master_addr, int local_sock){
        * or just detach them and have them stop running once reading a -1
       */
       /* this connects and starts a read thread */
-      connect_sock(*me, addr);
+      int master_sock = connect_sock(*me, addr);
 
+      send_msg(master_sock, UID_REQ, NULL, 0);
       /*
        * send a uid_request
        * send_msg();
@@ -240,6 +242,7 @@ void join_network(struct node** me, char* master_addr, int local_sock){
                   puts("fatal error - timed out waiting for uid assignment");
                   exit(EXIT_FAILURE);
             }
+      printf("we've been assigned uid: %i\n", (*me)->uid);
 }
 
 int main(int a, char** b){
@@ -251,10 +254,19 @@ int main(int a, char** b){
       init_sub_net(&sn);
 
       struct accept_th_arg ata;
-      ata.master_node = a == 1;
+      ata.local_sock = local_sock;
+      /* expecting ./not -m <ip> */
+      ata.master_node = a == 3;
+
+      struct sockaddr_in master_addr;
+      master_addr.sin_port = PORT;
+      master_addr.sin_family = AF_INET;
+
       if(ata.master_node){
+            inet_aton(b[2], &master_addr.sin_addr);
             ata.pot_cap = 100;
             ata.pot_peers = calloc(ata.pot_cap, sizeof(int));
+            bind(local_sock, (struct sockaddr*)&master_addr, sizeof(struct sockaddr_in));
       }
       ata.me = sn.me;
       /*ata.local_sock = */
@@ -262,11 +274,10 @@ int main(int a, char** b){
       pthread_t accept_pth;
       pthread_create(&accept_pth, NULL, accept_th, &ata);
 
-      (void)b;
       /* we're taking on master role */
-      if(a == 1){
-            struct in_addr dummy;
-            sn.me = create_node(assign_uid(), dummy, local_sock);
+      if(ata.master_node){
+            sn.me = create_node(assign_uid(), master_addr.sin_addr, local_sock);
+            while(1)usleep(1000);
       }
       else{
             join_network(&sn.me, b[1], local_sock);
