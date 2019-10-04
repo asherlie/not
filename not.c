@@ -259,11 +259,13 @@ int main(int a, char** b){
       struct sub_net sn;
       init_sub_net(&sn);
 
-      struct accept_th_arg ata;
-      ata.local_sock = local_sock;
+      /* does this need to be on the heap? */
+      struct accept_th_arg* ata = malloc(sizeof(struct accept_th_arg));
+      /*struct accept_th_arg ata;*/
+      ata->local_sock = local_sock;
       /* expecting ./not -m <ip> */
       /*ata.master_node = a == 3;*/
-      ata.master_node = *b[1] == '-';
+      ata->master_node = *b[1] == '-';
 
       struct sockaddr_in s_addr;
       memset(&s_addr, 0, sizeof(struct sockaddr_in));
@@ -286,18 +288,18 @@ int main(int a, char** b){
             exit(EXIT_FAILURE);
       }
 
-      if(ata.master_node){
-            ata.pot_cap = 100;
-            ata.pot_peers = calloc(ata.pot_cap, sizeof(int));
+      if(ata->master_node){
+            ata->pot_cap = 100;
+            ata->pot_peers = calloc(ata->pot_cap, sizeof(int));
       }
-      ata.me = sn.me;
+      ata->me = sn.me;
       /*ata.local_sock = */
 
       pthread_t accept_pth;
-      pthread_create(&accept_pth, NULL, accept_th, &ata);
+      pthread_create(&accept_pth, NULL, accept_th, ata);
 
       /* we're taking on master role */
-      if(ata.master_node){
+      if(ata->master_node){
             sn.me = create_node(assign_uid(), s_addr.sin_addr, local_sock);
             while(1)usleep(1000);
       }
