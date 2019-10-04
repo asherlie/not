@@ -211,7 +211,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr){
  */
 void join_network(struct node** me, char* master_addr, int local_sock){
        struct in_addr dummy;
-       memset(&dummy, 0, sizeof(struct sockaddr_in));
+       memset(&dummy, 0, sizeof(struct in_addr));
        *me = create_node(-1, dummy, local_sock);
 
       struct in_addr addr;
