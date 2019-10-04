@@ -128,6 +128,10 @@ void* accept_th(void* arg_v){
 
                   pthread_create(&read_pth, NULL, read_th, rta);
 
+                  /*send_msg(peer_sock, REQ, "hoyhoy", 7);*/
+            
+                  /*pthread_create(&read_pth, NULL, read_th, rta);*/
+
                   /*if we're the master and */
                   /*
                    * if(arg->master_node && arg->pot_peers[UID_ASN])
@@ -200,7 +204,10 @@ int connect_sock(struct node* me, struct in_addr inet_addr){
       addr.sin_port = PORT;
       addr.sin_addr = inet_addr;
 
-      rta->sock = connect(me->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+      connect(me->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+
+      /* rta->sock is redundant */
+      rta->sock = me->sock;
 
       pthread_create(&read_pth, NULL, read_th, rta);
 
@@ -292,7 +299,7 @@ int main(int a, char** b){
             ata->pot_cap = 100;
             ata->pot_peers = calloc(ata->pot_cap, sizeof(int));
       }
-      ata->me = sn.me;
+      ata->me = sn.me = (ata->master_node) ? create_node(assign_uid(), s_addr.sin_addr, local_sock) : NULL;
       /*ata.local_sock = */
 
       pthread_t accept_pth;
@@ -300,7 +307,7 @@ int main(int a, char** b){
 
       /* we're taking on master role */
       if(ata->master_node){
-            sn.me = create_node(assign_uid(), s_addr.sin_addr, local_sock);
+            /*sn.me = create_node(assign_uid(), s_addr.sin_addr, local_sock);*/
             while(1)usleep(1000);
       }
       else{
