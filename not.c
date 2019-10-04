@@ -265,16 +265,19 @@ int main(int a, char** b){
       ata.master_node = *b[1] == '-';
 
       struct sockaddr_in s_addr;
+      memset(&s_addr, 0, sizeof(struct sockaddr_in));
+
       s_addr.sin_port = PORT;
       s_addr.sin_family = AF_INET;
 
       /* this is for accept thread */
-      inet_aton((ata.master_node) ? b[2] : b[1], &s_addr.sin_addr);
+      /*inet_aton((ata.master_node) ? b[2] : b[1], &s_addr.sin_addr);*/
       /*
        * this is a bad solution - we need to be able to bind to an address
        * that others will know
        * s_addr.sin_addr.s_addr = htonl(INADDR_ANY);
       */
+      s_addr.sin_addr.s_addr = INADDR_ANY;
 
       if(bind(local_sock, (struct sockaddr*)&s_addr, sizeof(struct sockaddr_in)) == -1)perror("bind");
 
