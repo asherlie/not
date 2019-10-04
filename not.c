@@ -65,6 +65,7 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
                   send_uid_alert(rta->sock);
                   break;
             case UID_ALERT:
+                  puts("got uid alert");
                   memcpy(&m.me->uid, m.buf, sizeof(int));
             /* TODO: make sure that we're the master node
              * if not, do not attempt to assign
@@ -125,7 +126,7 @@ void* accept_th(void* arg_v){
                   rta->sock = peer_sock;
                   rta->me = arg->me;
 
-                  pthread_create(&read_pth, NULL, read_th, &rta);
+                  pthread_create(&read_pth, NULL, read_th, rta);
 
                   /*if we're the master and */
                   /*
@@ -201,7 +202,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr){
 
       rta->sock = connect(me->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
 
-      pthread_create(&read_pth, NULL, read_th, &rta);
+      pthread_create(&read_pth, NULL, read_th, rta);
 
       return rta->sock;
 }
@@ -279,7 +280,11 @@ int main(int a, char** b){
       */
       s_addr.sin_addr.s_addr = INADDR_ANY;
 
-      if(bind(local_sock, (struct sockaddr*)&s_addr, sizeof(struct sockaddr_in)) == -1)perror("bind");
+      if(bind(local_sock, (struct sockaddr*)&s_addr, sizeof(struct sockaddr_in)) == -1){
+            shutdown(local_sock, 2);
+            perror("bind");
+            exit(EXIT_FAILURE);
+      }
 
       if(ata.master_node){
             ata.pot_cap = 100;
