@@ -239,7 +239,7 @@ void join_network(struct node** me, char* master_addr, int local_sock){
 
       /* we now wait to receive a uid assignment */
       int timeout = 0;
-      while((*me)->uid == -1 && usleep(10000))
+      while((*me)->uid == -1 && !usleep(10000))
             if(++timeout == 1e4){
                   puts("fatal error - timed out waiting for uid assignment");
                   exit(EXIT_FAILURE);
