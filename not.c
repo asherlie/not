@@ -96,7 +96,8 @@ void* read_th(void* rta_v){
 /* host */
 void* accept_th(void* arg_v){
       struct accept_th_arg* arg = (struct accept_th_arg*)arg_v;
-      struct sockaddr_in addr = {0};
+      struct sockaddr_in addr;
+      memset(&addr, 0, sizeof(struct sockaddr_in));
 
       /*if(arg->master_node && listen(arg->local_sock, 0) == -1)perror("listen");*/
       if(listen(arg->local_sock, 0) == -1)perror("listen");
@@ -210,6 +211,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr){
  */
 void join_network(struct node** me, char* master_addr, int local_sock){
        struct in_addr dummy;
+       memset(&dummy, 0, sizeof(struct sockaddr_in));
        *me = create_node(-1, dummy, local_sock);
 
       struct in_addr addr;
