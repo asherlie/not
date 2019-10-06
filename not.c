@@ -106,8 +106,6 @@ void* accept_th(void* arg_v){
       /*if(arg->master_node && listen(arg->local_sock, 0) == -1)perror("listen");*/
       if(listen(arg->local_sock, 0) == -1)perror("listen");
 
-      printf("listening on sock %i\n", arg->local_sock);
-
       /* not sure that this assignment is necessary */
       socklen_t slen = sizeof(struct sockaddr_in);
 
