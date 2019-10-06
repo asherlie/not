@@ -61,8 +61,10 @@ struct msg read_msg(int sock){
       return ret;
 }
 
-void send_addr_alert(){
-}
+/*
+ * void send_addr_alert(int sock, addr){
+ * }
+*/
 
 _Bool handle_msg(struct msg m, struct read_th_arg* rta){
       switch(m.type){
@@ -70,6 +72,7 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
                   return 0;
             case ADDR_REQ:
                   if(!rta->master_node)return 1;
+                  send_msg(rta->sock, ADDR_ALERT, &rta->peer_addr, sizeof(struct in_addr));
                   break;
             case ADDR_ALERT:
                   memcpy(&rta->me->addr, m.buf, sizeof(struct in_addr));
@@ -203,9 +206,6 @@ int connect_sock(struct node* me, struct in_addr inet_addr){
       return rta->sock;
 }
 
-void request_my_addr(){
-}
-
 /* sock is socket of master node, uid is uid of target peer
  * target peer will join addr
  */
@@ -250,7 +250,7 @@ void join_network(struct node* me, char* master_addr){
             }
       printf("we've been assigned uid: %i\n", me->uid);
 
-      request_my_addr();
+      send_msg(master_sock, ADDR_REQ, NULL, 0);
 
       timeout = 0;
       while(!me->addr.s_addr && !usleep(10000))
