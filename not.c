@@ -60,6 +60,7 @@ struct msg read_msg(int sock){
 }
 
 _Bool handle_msg(struct msg m, struct read_th_arg* rta){
+      puts("handle msg called");
       switch(m.type){
             case MSG_BROKEN:
                   return 0;
@@ -87,7 +88,7 @@ void* read_th(void* rta_v){
       struct msg m; 
       m.me = rta->me;
 
-      while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta));
+      while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta))puts("read a msg");
       return NULL;
 }
 
@@ -114,6 +115,7 @@ void* accept_th(void* arg_v){
 
       while(1){
             if((peer_sock = accept(arg->local_sock, (struct sockaddr*)&addr, &slen)) != -1){
+                  puts("accepted a new con");
                   pthread_t read_pth;
                   /* putting this on the heap so it lasts between iteratios */
                   /* TODO: free */
@@ -203,11 +205,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr){
 /* this is called by a client to join the network
  * addr should be to the master node
  */
-void join_network(struct node** me, char* master_addr, int local_sock){
-       struct in_addr dummy;
-       memset(&dummy, 0, sizeof(struct in_addr));
-       *me = create_node(-1, dummy, local_sock);
-
+void join_network(struct node* me, char* master_addr){
       struct in_addr addr;
       inet_aton(master_addr, &addr);
       /*
@@ -216,7 +214,7 @@ void join_network(struct node** me, char* master_addr, int local_sock){
        * or just detach them and have them stop running once reading a -1
       */
       /* this connects and starts a read thread */
-      int master_sock = connect_sock(*me, addr);
+      int master_sock = connect_sock(me, addr);
 
       send_msg(master_sock, UID_REQ, NULL, 0);
       /*
@@ -235,12 +233,12 @@ void join_network(struct node** me, char* master_addr, int local_sock){
 
       /* we now wait to receive a uid assignment */
       int timeout = 0;
-      while((*me)->uid == -1 && !usleep(10000))
+      while(me->uid == -1 && !usleep(10000))
             if(++timeout == 1e4){
                   puts("fatal error - timed out waiting for uid assignment");
                   exit(EXIT_FAILURE);
             }
-      printf("we've been assigned uid: %i\n", (*me)->uid);
+      printf("we've been assigned uid: %i\n", me->uid);
 }
 
 int main(int a, char** b){
@@ -285,7 +283,9 @@ int main(int a, char** b){
             ata->pot_cap = 100;
             ata->pot_peers = calloc(ata->pot_cap, sizeof(int));
       }
-      ata->me = sn.me = create_node((ata->master_node) ? assign_uid() : -1, s_addr.sin_addr, local_sock);
+      /*ata->me = sn.me = (ata->master_node) ? create_node(assign_uid(), s_addr.sin_addr, local_sock) : NULL;*/
+      /*ata->me = sn.me = create_node((ata->master_node) ? assign_uid() : -1, s_addr.sin_addr, local_sock);*/
+      ata->me = sn.me = create_node((ata->master_node) ? assign_uid() : -1, s_addr.sin_addr, (ata->master_node) ? local_sock : socket(AF_INET, SOCK_STREAM, 0));
 
       pthread_t accept_pth;
       pthread_create(&accept_pth, NULL, accept_th, ata);
@@ -303,7 +303,7 @@ int main(int a, char** b){
              * yes, right
              * can two socks have same addr
              */
-            join_network(&sn.me, b[2], socket(AF_INET, SOCK_STREAM, 0));
+            join_network(sn.me, b[2]);
       }
       assert(sizeof(char) == 1);
 }
