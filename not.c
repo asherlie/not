@@ -1,3 +1,4 @@
+/* TODO: possible host/net byte order issues */
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -43,15 +44,17 @@ struct msg read_msg(int sock){
       struct msg ret;
 
       if(read(sock, &ret.type, sizeof(msgtype_t)) == -1 ||
-         read(sock, &ret.buf_sz, sizeof(int)) == -1){
-      
-            ret.type = MSG_BROKEN;
-            return ret;
+        (read(sock, &ret.buf_sz, sizeof(int)) == -1)){
+             ret.type = MSG_BROKEN;
+             return ret;
       }
 
       /* free buf */
-      ret.buf = calloc(ret.buf_sz, sizeof(char));
-      read(sock, ret.buf, ret.buf_sz);
+      if(ret.buf_sz){
+            ret.buf = calloc(ret.buf_sz, sizeof(char));
+            if(read(sock, ret.buf, ret.buf_sz) == -1)
+                  ret.type = MSG_BROKEN;
+      }
 
       return ret;
 }
@@ -65,7 +68,6 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
                   send_uid_alert(rta->sock);
                   break;
             case UID_ALERT:
-                  puts("got uid alert");
                   memcpy(&m.me->uid, m.buf, sizeof(int));
             /* TODO: make sure that we're the master node
              * if not, do not attempt to assign
@@ -84,6 +86,7 @@ void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
       struct msg m; 
       m.me = rta->me;
+
       while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta));
       /*
        * while(1){
@@ -125,21 +128,12 @@ void* accept_th(void* arg_v){
                   struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
                   rta->sock = peer_sock;
                   rta->me = arg->me;
+                  rta->master_node = arg->master_node;
 
                   pthread_create(&read_pth, NULL, read_th, rta);
-
-                  /*send_msg(peer_sock, REQ, "hoyhoy", 7);*/
-            
-                  /*pthread_create(&read_pth, NULL, read_th, rta);*/
-
-                  /*if we're the master and */
-                  /*
-                   * if(arg->master_node && arg->pot_peers[UID_ASN])
-                  */
-                  /*this should be done by read_th*/
-                  /*send_uid_alert(peer_sock);*/
             }
       }
+      return NULL;
 }
 
 
