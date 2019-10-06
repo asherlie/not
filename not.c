@@ -250,9 +250,12 @@ void join_network(struct node* me, char* master_addr){
             }
       printf("we've been assigned uid: %i\n", me->uid);
 
+      /* requesting my address */
       send_msg(master_sock, ADDR_REQ, NULL, 0);
 
       timeout = 0;
+
+      /* this is valid because INADDR_ANY == 0 */
       while(!me->addr.s_addr && !usleep(10000))
             if(++timeout == 1e4){
                   puts("fatal error - timed out waiting for addr notification");
@@ -262,23 +265,8 @@ void join_network(struct node* me, char* master_addr){
       int n_peers;
       int* to_conn = gen_peers(me->uid, &n_peers);
 
-      for(int i = 0; i < n_peers; ++i){
-/*
- *             this really shouldn't use me->addr, as of now it is 0
- *             we can add a msg type called ip_request
- *             called right after uid request - master node notifies us 
- *             of our ip address
- *             to achieve this we are probably gonna add a struct inet_addr to 
- *             rta
- *             after each accept(), it will be added to rta for that read thread
- * 
- *             here, we can either wait for a request from a new node
- *             or we can store itin the maser node
- *             leaning towards waiting for a requeest
-*/
-
+      for(int i = 0; i < n_peers; ++i)
             request_connection(master_sock, to_conn[i], me->addr);
-      }
 }
 
 int main(int a, char** b){
