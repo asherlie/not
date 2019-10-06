@@ -1,7 +1,7 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -Werror -Wpedantic -lpthread -g
+CFLAGS=-Wall -Wextra -Werror -Wpedantic -pthread -lm -g
 
-not: not.c
+not: not.c peercalc.c
 
 .PHONY:
 clean:

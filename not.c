@@ -9,6 +9,7 @@
 #include <pthread.h>
 
 /*#include "not.h"*/
+#include "peercalc.h"
 #include "shared.h"
 
 pthread_mutex_t uid_lock;
@@ -74,11 +75,6 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
       return 1;
 }
 
-#if 0
-when should this be spawned?
-each time we accept() im p sure
-#endif
-
 void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
       struct msg m; 
@@ -110,7 +106,6 @@ void* accept_th(void* arg_v){
 
       while(1){
             if((peer_sock = accept(arg->local_sock, (struct sockaddr*)&addr, &slen)) != -1){
-                  puts("accepted a new con");
                   pthread_t read_pth;
                   /* putting this on the heap so it lasts between iteratios */
                   /* TODO: free */
@@ -229,6 +224,10 @@ void join_network(struct node* me, char* master_addr){
                   exit(EXIT_FAILURE);
             }
       printf("we've been assigned uid: %i\n", me->uid);
+      
+      int n_peers;
+      int* to_conn = gen_peers(me->uid, &n_peers);
+      (void)to_conn;
 }
 
 int main(int a, char** b){
