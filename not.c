@@ -219,14 +219,9 @@ void join_network(struct node* me, char* master_addr){
        * then send log2(uid) connection polls
       */
 
-      /*int master_sock = */
-
-      /*
-       * read_th should be called in another thread now
-       * not sure how to make that happen
-      */
-
       /* we now wait to receive a uid assignment */
+
+      /* 100 second timeout */
       int timeout = 0;
       while(me->uid == -1 && !usleep(10000))
             if(++timeout == 1e4){
