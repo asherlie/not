@@ -70,7 +70,7 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
                   break;
             case UID_ALERT:
                   memcpy(&rta->me->uid, m.buf, sizeof(int));
-            case REQ:;
+            case CON_REQ:;
       }
       return 1;
 }
@@ -192,6 +192,16 @@ int connect_sock(struct node* me, struct in_addr inet_addr){
       return rta->sock;
 }
 
+/* sock is socket of master node, uid is uid of target peer
+ * target peer will join addr
+ */
+void request_connection(int sock, int uid, struct in_addr addr){
+      struct request_package rp;
+      rp.dest_uid = uid;
+      rp.loop_addr = addr;
+      send_msg(sock, CON_REQ, &rp, sizeof(struct request_package));
+}
+
 /* this is called by a client to join the network
  * addr should be to the master node
  */
@@ -227,7 +237,10 @@ void join_network(struct node* me, char* master_addr){
       
       int n_peers;
       int* to_conn = gen_peers(me->uid, &n_peers);
-      (void)to_conn;
+
+      for(int i = 0; i < n_peers; ++i){
+            request_connection(master_sock, to_conn[i], me->addr);
+      }
 }
 
 int main(int a, char** b){
