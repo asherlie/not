@@ -60,7 +60,6 @@ struct msg read_msg(int sock){
 }
 
 _Bool handle_msg(struct msg m, struct read_th_arg* rta){
-      puts("handle msg called");
       switch(m.type){
             case MSG_BROKEN:
                   return 0;
@@ -69,10 +68,7 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
                   send_uid_alert(rta->sock);
                   break;
             case UID_ALERT:
-                  memcpy(&m.me->uid, m.buf, sizeof(int));
-            /* TODO: make sure that we're the master node
-             * if not, do not attempt to assign
-             */
+                  memcpy(&rta->me->uid, m.buf, sizeof(int));
             case REQ:;
       }
       return 1;
@@ -86,7 +82,6 @@ each time we accept() im p sure
 void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
       struct msg m; 
-      m.me = rta->me;
 
       while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta))puts("read a msg");
       return NULL;
@@ -283,8 +278,6 @@ int main(int a, char** b){
             ata->pot_cap = 100;
             ata->pot_peers = calloc(ata->pot_cap, sizeof(int));
       }
-      /*ata->me = sn.me = (ata->master_node) ? create_node(assign_uid(), s_addr.sin_addr, local_sock) : NULL;*/
-      /*ata->me = sn.me = create_node((ata->master_node) ? assign_uid() : -1, s_addr.sin_addr, local_sock);*/
       ata->me = sn.me = create_node((ata->master_node) ? assign_uid() : -1, s_addr.sin_addr, (ata->master_node) ? local_sock : socket(AF_INET, SOCK_STREAM, 0));
 
       pthread_t accept_pth;
