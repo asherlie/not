@@ -1,4 +1,5 @@
 /* TODO: possible host/net byte order issues */
+/* big TODO: make a diagram of threads */
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -60,10 +61,19 @@ struct msg read_msg(int sock){
       return ret;
 }
 
+void send_addr_alert(){
+}
+
 _Bool handle_msg(struct msg m, struct read_th_arg* rta){
       switch(m.type){
             case MSG_BROKEN:
                   return 0;
+            case ADDR_REQ:
+                  if(!rta->master_node)return 1;
+                  break;
+            case ADDR_ALERT:
+                  memcpy(&rta->me->addr, m.buf, sizeof(struct in_addr));
+                  break;
             case UID_REQ:
                   if(!rta->master_node)return 1;
                   send_uid_alert(rta->sock);
@@ -113,6 +123,7 @@ void* accept_th(void* arg_v){
                   rta->sock = peer_sock;
                   rta->me = arg->me;
                   rta->master_node = arg->master_node;
+                  rta->peer_addr = addr.sin_addr;
 
                   pthread_create(&read_pth, NULL, read_th, rta);
             }
@@ -192,6 +203,9 @@ int connect_sock(struct node* me, struct in_addr inet_addr){
       return rta->sock;
 }
 
+void request_my_addr(){
+}
+
 /* sock is socket of master node, uid is uid of target peer
  * target peer will join addr
  */
@@ -228,17 +242,41 @@ void join_network(struct node* me, char* master_addr){
 
       /* 100 second timeout */
       int timeout = 0;
+      /*make this a macro and use it for my address request*/
       while(me->uid == -1 && !usleep(10000))
             if(++timeout == 1e4){
                   puts("fatal error - timed out waiting for uid assignment");
                   exit(EXIT_FAILURE);
             }
       printf("we've been assigned uid: %i\n", me->uid);
-      
+
+      request_my_addr();
+
+      timeout = 0;
+      while(!me->addr.s_addr && !usleep(10000))
+            if(++timeout == 1e4){
+                  puts("fatal error - timed out waiting for addr notification");
+                  exit(EXIT_FAILURE);
+            }
+
       int n_peers;
       int* to_conn = gen_peers(me->uid, &n_peers);
 
       for(int i = 0; i < n_peers; ++i){
+/*
+ *             this really shouldn't use me->addr, as of now it is 0
+ *             we can add a msg type called ip_request
+ *             called right after uid request - master node notifies us 
+ *             of our ip address
+ *             to achieve this we are probably gonna add a struct inet_addr to 
+ *             rta
+ *             after each accept(), it will be added to rta for that read thread
+ * 
+ *             here, we can either wait for a request from a new node
+ *             or we can store itin the maser node
+ *             leaning towards waiting for a requeest
+*/
+
             request_connection(master_sock, to_conn[i], me->addr);
       }
 }
@@ -281,11 +319,18 @@ int main(int a, char** b){
             exit(EXIT_FAILURE);
       }
 
-      if(ata->master_node){
-            ata->pot_cap = 100;
-            ata->pot_peers = calloc(ata->pot_cap, sizeof(int));
-      }
-      ata->me = sn.me = create_node((ata->master_node) ? assign_uid() : -1, s_addr.sin_addr, (ata->master_node) ? local_sock : socket(AF_INET, SOCK_STREAM, 0));
+      /*
+       * if(ata->master_node){
+       *       ata->pot_cap = 100;
+       *       ata->pot_peers = calloc(ata->pot_cap, sizeof(int));
+       * }
+      */
+      ata->me = sn.me = create_node(
+                                    (ata->master_node) ? assign_uid() : -1,
+                                    s_addr.sin_addr,
+                                    (ata->master_node) ? local_sock : socket(AF_INET, SOCK_STREAM, 0)
+                                   );
+      printf("addr: %i\n", (int)s_addr.sin_addr.s_addr);
 
       pthread_t accept_pth;
       pthread_create(&accept_pth, NULL, accept_th, ata);

@@ -1,7 +1,7 @@
 #define PORT 2390
 
 typedef enum msgtype {
-      CON_REQ = 0, UID_REQ, UID_ALERT, MSG_BROKEN
+      CON_REQ = 0, ADDR_REQ, ADDR_ALERT, UID_REQ, UID_ALERT, MSG_BROKEN
       }msgtype_t;
 
 struct node{
@@ -51,7 +51,7 @@ struct request_package{
 /* these two structs can be consolidated */
 struct accept_th_arg{
       _Bool master_node;
-      int* pot_peers, pot_cap;
+      //int* pot_peers, pot_cap;
 
       int local_sock;
       struct node* me;
@@ -61,6 +61,8 @@ struct read_th_arg{
       _Bool master_node;
       int sock;
       struct node* me;
+
+      struct in_addr peer_addr;
 };
 
 struct thrad_cont{
