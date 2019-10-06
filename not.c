@@ -43,8 +43,8 @@ void send_uid_alert(int sock){
 struct msg read_msg(int sock){
       struct msg ret;
 
-      if(read(sock, &ret.type, sizeof(msgtype_t)) == -1 ||
-        (read(sock, &ret.buf_sz, sizeof(int)) == -1)){
+      if(read(sock, &ret.type, sizeof(msgtype_t)) <= 0 ||
+        (read(sock, &ret.buf_sz, sizeof(int)) <= 0)){
              ret.type = MSG_BROKEN;
              return ret;
       }
@@ -52,7 +52,7 @@ struct msg read_msg(int sock){
       /* free buf */
       if(ret.buf_sz){
             ret.buf = calloc(ret.buf_sz, sizeof(char));
-            if(read(sock, ret.buf, ret.buf_sz) == -1)
+            if(read(sock, ret.buf, ret.buf_sz) <= 0)
                   ret.type = MSG_BROKEN;
       }
 
@@ -83,7 +83,7 @@ void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
       struct msg m; 
 
-      while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta))puts("read a msg");
+      while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta));
       return NULL;
 }
 
@@ -278,20 +278,15 @@ int main(int a, char** b){
       pthread_t accept_pth;
       pthread_create(&accept_pth, NULL, accept_th, ata);
 
-      /* we're taking on master role */
-      if(ata->master_node){
-            /*sn.me = create_node(assign_uid(), s_addr.sin_addr, local_sock);*/
-            while(1)usleep(1000);
-      }
-      else{
-            /*join_network(&sn.me, b[2], local_sock);*/
-            /* should this connector sock have the ip i want ppl to connect
-             * to when they hit me up?
-             * after i request a formal connection
-             * yes, right
-             * can two socks have same addr
-             */
+      /*join_network(&sn.me, b[2], local_sock);*/
+      /* should this connector sock have the ip i want ppl to connect
+       * to when they hit me up?
+       * after i request a formal connection
+       * yes, right
+       * can two socks have same addr
+       */
+      if(!ata->master_node)
             join_network(sn.me, b[2]);
-      }
-      assert(sizeof(char) == 1);
+
+      while(1)usleep(1000);
 }

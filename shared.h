@@ -37,9 +37,6 @@ struct msg{
       msgtype_t type;
       void* buf;
       int buf_sz;
-
-      /* useful for setting uid */
-      struct node* me;
 };
 
 /* buffer contains a request_package when a REQ message is sent */
