@@ -88,12 +88,6 @@ void* read_th(void* rta_v){
       m.me = rta->me;
 
       while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta));
-      /*
-       * while(1){
-       *       m = read_msg(rta->sock);
-       *       handle_msg(m, rta);
-       * }
-      */
       return NULL;
 }
 
@@ -291,8 +285,7 @@ int main(int a, char** b){
             ata->pot_cap = 100;
             ata->pot_peers = calloc(ata->pot_cap, sizeof(int));
       }
-      ata->me = sn.me = (ata->master_node) ? create_node(assign_uid(), s_addr.sin_addr, local_sock) : NULL;
-      /*ata.local_sock = */
+      ata->me = sn.me = create_node((ata->master_node) ? assign_uid() : -1, s_addr.sin_addr, local_sock);
 
       pthread_t accept_pth;
       pthread_create(&accept_pth, NULL, accept_th, ata);
