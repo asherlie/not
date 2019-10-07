@@ -90,12 +90,33 @@ void request_connection(int sock, int uid, int initiator_uid, struct in_addr add
       send_msg(sock, CON_REQ, &rp, sizeof(struct request_package));
 }
 
+/* TODO: we need a mutex lock on sn */
+struct node* shortest_sub_net_dist(struct sub_net* sn, int dest_uid){
+       /*
+        * check if sock == -1
+        * socks will be set to -1 by handler if MSG_BROKEN
+       */
+       /* TODO: use a less naive approach */
+       if(!sn->n_direct)return NULL;
+       int dist, min = abs(dest_uid-sn->direct_peers[0]->uid);
+       struct node* min_n = sn->direct_peers[0];
+       for(int i = 1; i < sn->n_direct; ++i){
+            dist = abs(dest_uid-sn->direct_peers[i]->uid);
+            if(sn->direct_peers[i]->sock != -1 && dist < min){
+                  min = dist;
+                  min_n = sn->direct_peers[i];
+            }
+       }
+       return min_n;
+}
+
 /* forward declaration */
 int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_net* sn);
 
 _Bool handle_msg(struct msg m, struct read_th_arg* rta){
       switch(m.type){
             case MSG_BROKEN:
+                  rta->sock = -1;
                   return 0;
             case ADDR_REQ:
                   if(!rta->master_node)return 1;
@@ -125,14 +146,18 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
                         connect_sock(rta->me, rp.loop_addr, rp.loop_uid, rta->sn);
                   }
 
-                  if(rta->me->uid != rp.dest_uid)
+                  if(rta->me->uid != rp.dest_uid){
 
                         /*sock should be a socket from out subnet*/
                         /*
                          * define a functoin to find closest uid to request
                          * to the destination
                         */
-                        request_connection(rta->sock, rp.dest_uid, rp.loop_uid, rp.loop_addr);
+                        struct node* closest = shortest_sub_net_dist(rta->sn, rp.loop_uid);
+                        if(!closest)return 1;
+                        request_connection(closest->sock, rp.dest_uid, rp.loop_uid, rp.loop_addr);
+                        /*request_connection(rta->sock, rp.dest_uid, rp.loop_uid, rp.loop_addr);*/
+                  }
 
                   break;
             }
