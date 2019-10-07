@@ -279,8 +279,15 @@ void join_network(struct node* me, char* master_addr){
       int n_peers;
       int* to_conn = gen_peers(me->uid, &n_peers);
 
-      for(int i = 0; i < n_peers; ++i)
+      for(int i = 0; i < n_peers; ++i){
+            /*
+             * we need to wait after each conn request to confirm we've been reached out to
+             * we can timeout and ignore it if no conn is made assume death
+             * once we've been connected to, CLOSE SOCKE WITH MASTER NODE
+            */
             request_connection(master_sock, to_conn[i], me->uid, me->addr);
+      }
+      shutdown(master_sock, 2);
 }
 
 int main(int a, char** b){
