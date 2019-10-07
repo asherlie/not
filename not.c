@@ -185,6 +185,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
       /*rta->sock = me->sock;*/
 
       pthread_create(&read_pth, NULL, read_th, rta);
+      pthread_detach(read_pth);
 
       return rta->sock;
 }
@@ -224,6 +225,7 @@ void* accept_th(void* arg_v){
                   rta->peer_addr = addr.sin_addr;
 
                   pthread_create(&read_pth, NULL, read_th, rta);
+                  pthread_detach(read_pth);
             }
       }
       return NULL;
@@ -344,6 +346,7 @@ int main(int a, char** b){
 
       pthread_t accept_pth;
       pthread_create(&accept_pth, NULL, accept_th, ata);
+      pthread_detach(accept_pth);
 
       /*join_network(&sn.me, b[2], local_sock);*/
       /* should this connector sock have the ip i want ppl to connect
