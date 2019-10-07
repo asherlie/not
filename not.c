@@ -61,10 +61,37 @@ struct msg read_msg(int sock){
       return ret;
 }
 
-/*
- * void send_addr_alert(int sock, addr){
- * }
-*/
+/* end host */
+
+/* node/net operations */
+struct node* create_node(int uid, struct in_addr addr, int sock){
+      struct node* ret = malloc(sizeof(struct node));
+      ret->uid = uid;
+      ret->addr = addr;
+      ret->sock = sock;
+      return ret;
+}
+
+void init_sub_net(struct sub_net* sn){
+      sn->n_direct = 0;
+      sn->direct_cap = 20;
+      sn->direct_peers = malloc(sizeof(struct node*)*sn->direct_cap);
+}
+
+/* sock is socket of master node, uid is uid of target peer
+ * target peer will join addr
+ */
+void request_connection(int sock, int uid, int initiator_uid, struct in_addr addr){
+      struct request_package rp;
+      rp.dest_uid = uid;
+      /* this is my address */
+      rp.loop_addr = addr;
+      rp.loop_uid = initiator_uid;
+      send_msg(sock, CON_REQ, &rp, sizeof(struct request_package));
+}
+
+/* forward declaration */
+int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_net* sn);
 
 _Bool handle_msg(struct msg m, struct read_th_arg* rta){
       switch(m.type){
@@ -83,7 +110,33 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
                   break;
             case UID_ALERT:
                   memcpy(&rta->me->uid, m.buf, sizeof(int));
-            case CON_REQ:;
+                  break;
+            case CON_REQ:{
+                  /* should we only continue if master node? */
+                  if(!rta->master_node || m.buf_sz != sizeof(struct request_package))return 1;
+
+                  struct request_package rp;
+                  memcpy(&rp, m.buf, sizeof(struct request_package));
+                  if(rta->me->uid == rp.dest_uid){
+                        /*
+                         * connect sock should use a new socket each time
+                         * that it creates and listen()s
+                        */
+                        connect_sock(rta->me, rp.loop_addr, rp.loop_uid, rta->sn);
+                  }
+
+                  if(rta->me->uid != rp.dest_uid)
+
+                        /*sock should be a socket from out subnet*/
+                        /*
+                         * define a functoin to find closest uid to request
+                         * to the destination
+                        */
+                        request_connection(rta->sock, rp.dest_uid, rp.loop_uid, rp.loop_addr);
+
+                  break;
+            }
+
       }
       return 1;
 }
@@ -95,6 +148,47 @@ void* read_th(void* rta_v){
       while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta));
       return NULL;
 }
+
+/* returns the socket of the peer - this is also stored in rta->sock */
+/* new peer information is stored in sn, if(sn) */
+int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_net* sn){
+      pthread_t read_pth;
+      struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
+      rta->sock = me->sock;
+
+      // uhh clean this up
+      rta->sock = socket(AF_INET, SOCK_STREAM, 0);
+
+      rta->me = me;
+
+      struct sockaddr_in addr;
+      addr.sin_family = AF_INET;
+      addr.sin_port = PORT;
+      addr.sin_addr = inet_addr;
+
+      /*connect(me->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));*/
+      connect(rta->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+
+      if(sn){
+            if(sn->n_direct == sn->direct_cap){
+                  sn->direct_cap *= 2;
+                  struct node** tmp_n = malloc(sizeof(struct node*)*sn->direct_cap);
+                  memcpy(tmp_n, sn->direct_peers, sizeof(struct node*)*sn->n_direct);
+                  free(sn->direct_peers);
+                  sn->direct_peers = tmp_n;
+            }
+            sn->direct_peers[sn->n_direct++] = create_node(uid, inet_addr, rta->sock);
+      }
+
+      /* rta->sock is redundant */
+      /*nvm don't do this - new socket should be returned*/
+      /*rta->sock = me->sock;*/
+
+      pthread_create(&read_pth, NULL, read_th, rta);
+
+      return rta->sock;
+}
+
 
 /* host */
 void* accept_th(void* arg_v){
@@ -123,6 +217,7 @@ void* accept_th(void* arg_v){
                   /* putting this on the heap so it lasts between iteratios */
                   /* TODO: free */
                   struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
+                  rta->sn = arg->sn;
                   rta->sock = peer_sock;
                   rta->me = arg->me;
                   rta->master_node = arg->master_node;
@@ -134,87 +229,6 @@ void* accept_th(void* arg_v){
       return NULL;
 }
 
-
-/* end host */
-
-/* client */
-/* client joins and immediately gets a uid - with this information client knows to wait for connections from uids that 
- * are appropriate distances from her
- * uid == 1 joins and requests information about uid == 0
- *
- * uid == 2 joins by connecting to uid == 0 and knows to read the amount of bytes necessary to get information about
- * nodes uid == 0, uid == 1j
- *
- * wait no we should expect clients to request information so it can be passed through system
- * send a request to node 0 for each node it computes that it needs to connect to
- * 0 requests highest node possible without getting to correct one
- * this follows until message containing destination node uid and original requester ip address gets to destination node
- * destination node will connect to requester node - this avoids he need to backtrack the entire connection
- *
- */
-/*
- * void* connect_th(char* ip){
- *       int sock = socket(AF_INET, SOCK_STREAM, 0);
- *       (void)sock;
- *       (void)ip;
- *       return NULL;
- * }
-*/
-/* end client */
-
-
-/* node/net operations */
-struct node* create_node(int uid, struct in_addr addr, int sock){
-      struct node* ret = malloc(sizeof(struct node));
-      ret->uid = uid;
-      ret->addr = addr;
-      ret->sock = sock;
-      return ret;
-}
-
-void init_sub_net(struct sub_net* sn){
-      sn->n_direct = 0;
-      sn->direct_cap = 20;
-      sn->direct_peers = malloc(sizeof(struct node)*sn->direct_cap);
-}
-
-/*
- * void connect_sock(int sock, struct inet_addr addr, struct thread_cont){
- *       pthread_create
- * }
-*/
-
-/* returns the socket of the peer - this is also stored in rta->sock */
-int connect_sock(struct node* me, struct in_addr inet_addr){
-      pthread_t read_pth;
-      struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
-      rta->sock = me->sock;
-      rta->me = me;
-
-      struct sockaddr_in addr;
-      addr.sin_family = AF_INET;
-      addr.sin_port = PORT;
-      addr.sin_addr = inet_addr;
-
-      connect(me->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
-
-      /* rta->sock is redundant */
-      rta->sock = me->sock;
-
-      pthread_create(&read_pth, NULL, read_th, rta);
-
-      return rta->sock;
-}
-
-/* sock is socket of master node, uid is uid of target peer
- * target peer will join addr
- */
-void request_connection(int sock, int uid, struct in_addr addr){
-      struct request_package rp;
-      rp.dest_uid = uid;
-      rp.loop_addr = addr;
-      send_msg(sock, CON_REQ, &rp, sizeof(struct request_package));
-}
 
 /* this is called by a client to join the network
  * addr should be to the master node
@@ -228,7 +242,7 @@ void join_network(struct node* me, char* master_addr){
        * or just detach them and have them stop running once reading a -1
       */
       /* this connects and starts a read thread */
-      int master_sock = connect_sock(me, addr);
+      int master_sock = connect_sock(me, addr, -1, NULL);
 
       send_msg(master_sock, UID_REQ, NULL, 0);
       /*
@@ -266,7 +280,7 @@ void join_network(struct node* me, char* master_addr){
       int* to_conn = gen_peers(me->uid, &n_peers);
 
       for(int i = 0; i < n_peers; ++i)
-            request_connection(master_sock, to_conn[i], me->addr);
+            request_connection(master_sock, to_conn[i], me->uid, me->addr);
 }
 
 int main(int a, char** b){
@@ -282,6 +296,7 @@ int main(int a, char** b){
       struct accept_th_arg* ata = malloc(sizeof(struct accept_th_arg));
       /*struct accept_th_arg ata;*/
       ata->local_sock = local_sock;
+      ata->sn = &sn;
       /* expecting ./not -m <ip> */
       /*ata.master_node = a == 3;*/
       ata->master_node = *b[1] == '-';

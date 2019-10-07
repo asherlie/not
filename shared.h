@@ -29,7 +29,7 @@ struct node{
 
 struct sub_net{
       int n_direct, direct_cap;
-      struct node* direct_peers;
+      struct node** direct_peers;
       struct node* me;
 };
 
@@ -41,7 +41,7 @@ struct msg{
 
 /* buffer contains a request_package when a REQ message is sent */
 struct request_package{
-      int dest_uid;
+      int dest_uid, loop_uid;
       struct in_addr loop_addr;
       //char addr_str[50];
 };
@@ -55,6 +55,8 @@ struct accept_th_arg{
 
       int local_sock;
       struct node* me;
+
+      struct sub_net* sn;
 };
 
 struct read_th_arg{
@@ -63,6 +65,8 @@ struct read_th_arg{
       struct node* me;
 
       struct in_addr peer_addr;
+
+      struct sub_net* sn;
 };
 
 struct thrad_cont{
