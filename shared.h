@@ -1,7 +1,7 @@
 #define PORT 2390
 
 typedef enum msgtype {
-      CON_REQ = 0, ADDR_REQ, ADDR_ALERT, UID_REQ, UID_ALERT, MSG_BROKEN
+      CON_REQ = 0, ADDR_REQ, ADDR_ALERT, UID_REQ, UID_ALERT, MSG_BROKEN, PROP_MSG
       }msgtype_t;
 
 struct node{
@@ -28,6 +28,7 @@ struct node{
 
 
 struct sub_net{
+      //pthread_mutex_t 
       int n_direct, direct_cap;
       struct node** direct_peers;
       struct node* me;
@@ -44,6 +45,12 @@ struct request_package{
       int dest_uid, loop_uid;
       struct in_addr loop_addr;
       //char addr_str[50];
+};
+
+struct prop_pkg{
+      int dest_uid, sender_uid, dest_bufsz;
+      msgtype_t msgtype;
+      void* buf;
 };
 
 /* arguments */

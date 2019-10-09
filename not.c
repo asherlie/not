@@ -161,6 +161,23 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
 
                   break;
             }
+            case PROP_MSG:{
+                  if(m.buf_sz != sizeof(struct prop_pkg))return 1;
+                  struct prop_pkg pp;
+                  memcpy(&pp, m.buf, sizeof(struct prop_pkg));
+                  if(rta->me->uid == pp.dest_uid){
+
+                        struct msg tmp_m;
+                        tmp_m.type = pp.msgtype;
+                        tmp_m.buf = pp.buf;
+                        tmp_m.buf_sz = pp.dest_bufsz;
+
+                        handle_msg(tmp_m, rta);
+                  }
+                  else{
+                        
+                  }
+            }
 
       }
       return 1;
@@ -317,6 +334,19 @@ void join_network(struct node* me, char* master_addr){
       shutdown(master_sock, 2);
 }
 
+/* TODO: add a queue structure for sending messages */
+/* wait - possibly only need a queue to receive them
+ * sending messages occurs within a repl and is limited
+ * by the user 
+ * we need a queue for receiving many messages concurrently
+ */
+void queue_msg(struct sub_net* sn, int uid, char* ln){
+      struct node* closest = shortest_sub_net_dist(sn, uid);
+      (void)closest;
+      (void)ln;
+      /*send_msg();*/
+}
+
 int main(int a, char** b){
       if(a != 2)return EXIT_FAILURE;
       /* TODO: destroy this */
@@ -393,6 +423,9 @@ int main(int a, char** b){
       size_t sz;
       puts("RE");
       while(getline(&ln, &sz, stdin) != EOF){
-            puts(ln);
+            /*queue_msg(ln);*/
+            int uid = -1;
+            queue_msg(&sn, uid, ln);
+            printf("%i direct peers\n", sn.n_direct);
       }
 }
