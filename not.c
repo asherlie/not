@@ -318,7 +318,7 @@ void join_network(struct node* me, char* master_addr){
 }
 
 int main(int a, char** b){
-      if(a != 3)return EXIT_FAILURE;
+      if(a != 2)return EXIT_FAILURE;
       /* TODO: destroy this */
       pthread_mutex_init(&uid_lock, NULL);
       int local_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -381,7 +381,18 @@ int main(int a, char** b){
        * can two socks have same addr
        */
       if(!ata->master_node)
-            join_network(sn.me, b[2]);
+            join_network(sn.me, b[1]);
 
-      while(1)usleep(1000);
+      /*
+       * while(1){
+       *       getchar()
+       * }
+      */
+
+      char* ln = NULL;
+      size_t sz;
+      puts("RE");
+      while(getline(&ln, &sz, stdin) != EOF){
+            puts(ln);
+      }
 }
