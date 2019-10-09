@@ -110,6 +110,30 @@ struct node* shortest_sub_net_dist(struct sub_net* sn, int dest_uid){
        return min_n;
 }
 
+_Bool send_prop_msg(struct sub_net* sn, msgtype_t msgtype, int sender_uid, 
+                   int dest_uid, void* buf, int buf_sz){
+      struct prop_pkg pp;
+      pp.dest_uid = dest_uid;
+      pp.sender_uid = sender_uid;
+      memcpy(pp.dest_buf, buf, buf_sz);
+      pp.dest_bufsz = buf_sz;
+      pp.msgtype = msgtype;
+
+      /*
+       * won't work because buf is apointer to our virt mem
+       * need to eithe rset aside like 200 bytes in each struct prop msg 
+       * to store buf
+       * or have another mesage send soon after
+       * pp.buf = buf;
+      */
+      
+      struct node* closest = shortest_sub_net_dist(sn, dest_uid);
+      if(!closest)return 0;
+
+      send_msg(closest->sock, PROP_MSG, &pp, sizeof(struct prop_pkg));
+      return 1;
+}
+
 /* forward declaration */
 int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_net* sn);
 
@@ -169,13 +193,18 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
 
                         struct msg tmp_m;
                         tmp_m.type = pp.msgtype;
-                        tmp_m.buf = pp.buf;
+                        tmp_m.buf = pp.dest_buf;
                         tmp_m.buf_sz = pp.dest_bufsz;
 
                         handle_msg(tmp_m, rta);
                   }
                   else{
-                        
+                        struct node* closest = shortest_sub_net_dist(rta->sn, pp.dest_uid);
+                        if(!closest)return 1;
+                        /* TODO: there's no reason to rebuild a prop pkg
+                         * when we already have one
+                         */
+                        send_prop_msg(rta->sn, pp.msgtype, pp.sender_uid, pp.dest_uid, pp.dest_buf, pp.dest_bufsz);
                   }
             }
 
