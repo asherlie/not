@@ -162,6 +162,7 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                   int uid;
                   memcpy(&uid, m.buf, sizeof(int));
                   struct in_addr dummy_addr; 
+                  dummy_addr.s_addr = 0;
                   sn_insert_direct_peer(rta->sn, uid, dummy_addr, rta->sock);
                   break;
             }
