@@ -134,10 +134,16 @@ _Bool send_prop_msg(struct sub_net* sn, msgtype_t msgtype, int sender_uid,
       return 1;
 }
 
+void send_txt_msg(struct sub_net* sn, int uid, char* msg){
+      /* TODO: don't use strlen */
+      send_prop_msg(sn, TEXT_COM, sn->me->uid, uid, msg, strlen(msg));
+}
+
 /* forward declaration */
 int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_net* sn);
 
-_Bool handle_msg(struct msg m, struct read_th_arg* rta){
+/* pp_opt is used only for recursive calls once prop msg reaches dest */
+_Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt){
       switch(m.type){
             case MSG_BROKEN:
                   rta->sock = -1;
@@ -196,7 +202,7 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
                         tmp_m.buf = pp.dest_buf;
                         tmp_m.buf_sz = pp.dest_bufsz;
 
-                        handle_msg(tmp_m, rta);
+                        handle_msg(tmp_m, rta, &pp);
                   }
                   else{
                         struct node* closest = shortest_sub_net_dist(rta->sn, pp.dest_uid);
@@ -206,8 +212,10 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta){
                          */
                         send_prop_msg(rta->sn, pp.msgtype, pp.sender_uid, pp.dest_uid, pp.dest_buf, pp.dest_bufsz);
                   }
+                  break;
             }
-
+            case TEXT_COM:
+                  printf("got message from %i: %s\n", pp_opt->sender_uid, (char*)m.buf);
       }
       return 1;
 }
@@ -216,7 +224,7 @@ void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
       struct msg m; 
 
-      while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta));
+      while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));
       return NULL;
 }
 

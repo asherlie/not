@@ -1,7 +1,7 @@
 #define PORT 2390
 
 typedef enum msgtype {
-      CON_REQ = 0, ADDR_REQ, ADDR_ALERT, UID_REQ, UID_ALERT, MSG_BROKEN, PROP_MSG
+      CON_REQ = 0, ADDR_REQ, ADDR_ALERT, UID_REQ, UID_ALERT, MSG_BROKEN, PROP_MSG, TEXT_COM
       }msgtype_t;
 
 struct node{
@@ -48,9 +48,10 @@ struct request_package{
 };
 
 struct prop_pkg{
+      /* dest_buf{sz} are used once the message reaches dest_uid */
       int dest_uid, sender_uid, dest_bufsz;
       msgtype_t msgtype;
-      void* buf;
+      char dest_buf[200];
 };
 
 /* arguments */
