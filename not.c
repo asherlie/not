@@ -146,6 +146,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
 _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt){
       switch(m.type){
             case MSG_BROKEN:
+                  /* TODO: remove node from direct peers and decrement rta->sn; */
                   rta->sock = -1;
                   return 0;
             case ADDR_REQ:
@@ -230,6 +231,17 @@ void* read_th(void* rta_v){
 
 /* returns the socket of the peer - this is also stored in rta->sock */
 /* new peer information is stored in sn, if(sn) */
+void sn_insert_direct_peer(struct sub_net* sn, int uid, struct in_addr inet_addr, int peer_sock){
+      if(sn->n_direct == sn->direct_cap){
+            sn->direct_cap *= 2;
+            struct node** tmp_n = malloc(sizeof(struct node*)*sn->direct_cap);
+            memcpy(tmp_n, sn->direct_peers, sizeof(struct node*)*sn->n_direct);
+            free(sn->direct_peers);
+            sn->direct_peers = tmp_n;
+      }
+      sn->direct_peers[sn->n_direct++] = create_node(uid, inet_addr, peer_sock);
+}
+
 int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_net* sn){
       pthread_t read_pth;
       struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
@@ -249,14 +261,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
       connect(rta->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
 
       if(sn){
-            if(sn->n_direct == sn->direct_cap){
-                  sn->direct_cap *= 2;
-                  struct node** tmp_n = malloc(sizeof(struct node*)*sn->direct_cap);
-                  memcpy(tmp_n, sn->direct_peers, sizeof(struct node*)*sn->n_direct);
-                  free(sn->direct_peers);
-                  sn->direct_peers = tmp_n;
-            }
-            sn->direct_peers[sn->n_direct++] = create_node(uid, inet_addr, rta->sock);
+            sn_insert_direct_peer(sn, uid, inet_addr, rta->sock);
       }
 
       /* rta->sock is redundant */
