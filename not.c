@@ -139,12 +139,32 @@ void send_txt_msg(struct sub_net* sn, int uid, char* msg){
       send_prop_msg(sn, TEXT_COM, sn->me->uid, uid, msg, strlen(msg));
 }
 
+void sn_insert_direct_peer(struct sub_net* sn, int uid, struct in_addr inet_addr, int peer_sock){
+      /* TODO: pthread_mutex_lock() */
+      if(sn->n_direct == sn->direct_cap){
+            sn->direct_cap *= 2;
+            struct node** tmp_n = malloc(sizeof(struct node*)*sn->direct_cap);
+            memcpy(tmp_n, sn->direct_peers, sizeof(struct node*)*sn->n_direct);
+            free(sn->direct_peers);
+            sn->direct_peers = tmp_n;
+      }
+      sn->direct_peers[sn->n_direct++] = create_node(uid, inet_addr, peer_sock);
+}
+
 /* forward declaration */
 int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_net* sn);
 
 /* pp_opt is used only for recursive calls once prop msg reaches dest */
 _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt){
       switch(m.type){
+            case NEW_PEER_UID:{
+                  if(m.buf_sz != sizeof(int))return 1;
+                  int uid;
+                  memcpy(&uid, m.buf, sizeof(int));
+                  struct in_addr dummy_addr; 
+                  sn_insert_direct_peer(rta->sn, uid, dummy_addr, rta->sock);
+                  break;
+            }
             case MSG_BROKEN:
                   /* TODO: remove node from direct peers and decrement rta->sn; */
                   rta->sock = -1;
@@ -231,17 +251,6 @@ void* read_th(void* rta_v){
 
 /* returns the socket of the peer - this is also stored in rta->sock */
 /* new peer information is stored in sn, if(sn) */
-void sn_insert_direct_peer(struct sub_net* sn, int uid, struct in_addr inet_addr, int peer_sock){
-      if(sn->n_direct == sn->direct_cap){
-            sn->direct_cap *= 2;
-            struct node** tmp_n = malloc(sizeof(struct node*)*sn->direct_cap);
-            memcpy(tmp_n, sn->direct_peers, sizeof(struct node*)*sn->n_direct);
-            free(sn->direct_peers);
-            sn->direct_peers = tmp_n;
-      }
-      sn->direct_peers[sn->n_direct++] = create_node(uid, inet_addr, peer_sock);
-}
-
 int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_net* sn){
       pthread_t read_pth;
       struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
@@ -270,6 +279,9 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
 
       pthread_create(&read_pth, NULL, read_th, rta);
       pthread_detach(read_pth);
+
+      /* send our uid to our new direct peer so that we can be added to their sub_net */
+      send_msg(rta->sock, NEW_PEER_UID, &me->uid, sizeof(int));
 
       return rta->sock;
 }
@@ -308,8 +320,21 @@ void* accept_th(void* arg_v){
                   rta->master_node = arg->master_node;
                   rta->peer_addr = addr.sin_addr;
 
+                  /* TODO URGENT: we need to know new peer's uid */
+                  /*sn_insert_direct_peer(rta->sn, 0);*/
+
                   pthread_create(&read_pth, NULL, read_th, rta);
                   pthread_detach(read_pth);
+
+                  /*
+                   * wait for new peer's uid to be set with timeout technique
+                   * handle message will ideally receive a MY_UID_ALERT
+                   * and set it
+                   * we can also have handle_msg await a MY_UID_ALERT as a sign
+                   * that a user has joined us from a request
+                   * handle_msg will then add this new user to our struct sub_net 
+                   * this minimizes complexity, as we only need to add one protocol
+                  */
             }
       }
       return NULL;

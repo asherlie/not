@@ -1,7 +1,7 @@
 #define PORT 2390
 
 typedef enum msgtype {
-      CON_REQ = 0, ADDR_REQ, ADDR_ALERT, UID_REQ, UID_ALERT, MSG_BROKEN, PROP_MSG, TEXT_COM
+      CON_REQ = 0, ADDR_REQ, ADDR_ALERT, UID_REQ, UID_ALERT, MSG_BROKEN, PROP_MSG, TEXT_COM, NEW_PEER_UID
       }msgtype_t;
 
 struct node{
