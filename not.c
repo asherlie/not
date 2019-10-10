@@ -460,7 +460,9 @@ int main(int a, char** b){
       size_t sz;
       puts("RE");
       char* i;
-      while(getline(&ln, &sz, stdin) != EOF){
+      int len;
+      while((len = getline(&ln, &sz, stdin)) != EOF){
+            ln[--len] = 0;
             /*queue_msg(ln);*/
             for(i = ln; *i && *i != ' '; ++i);
             if(!*i)continue;
@@ -468,6 +470,8 @@ int main(int a, char** b){
             int uid = atoi(ln);
             char* msg = i+1;
 
+            printf("n peers: %i\n", sn.n_direct);
+            printf("sending msg: %s to %i\n", msg, uid);
             send_txt_msg(&sn, uid, msg);
 
             /*queue_msg(&sn, uid, ln);*/
