@@ -295,6 +295,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
 
       // uhh clean this up
       rta->sock = socket(AF_INET, SOCK_STREAM, 0);
+      rta->sn = sn;
 
       rta->me = me;
 
