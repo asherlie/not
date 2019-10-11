@@ -268,6 +268,7 @@ int sn_remove_direct_peer(struct sub_net* sn, int uid){
             if(sn->direct_peers[i]->uid == uid || sn->direct_peers[i]->sock == -1){
                   --i;
                   memmove(sn->direct_peers+i, sn->direct_peers+i+1, sizeof(struct node*)*(sn->n_direct-i));
+                  --sn->direct_peers;
                   ++n_removed;
             }
       }
@@ -489,12 +490,6 @@ int main(int a, char** b){
             exit(EXIT_FAILURE);
       }
 
-      /*
-       * if(ata->master_node){
-       *       ata->pot_cap = 100;
-       *       ata->pot_peers = calloc(ata->pot_cap, sizeof(int));
-       * }
-      */
       ata->me = sn.me = create_node(
                                     (ata->master_node) ? assign_uid() : -1,
                                     s_addr.sin_addr,
