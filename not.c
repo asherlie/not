@@ -136,6 +136,21 @@ _Bool send_prop_msg(struct sub_net* sn, msgtype_t msgtype, int sender_uid,
 
 void send_txt_msg(struct sub_net* sn, int uid, char* msg){
       /* TODO: don't use strlen */
+/*
+ *       concern:
+ *       why does sn have 2 direct peers in master node when master sends msg to new node
+ *       should only be new node peer
+ *       instead, however, we have new node and a node with -1 as uid 
+ * 
+ *       our first peer is -1 uid
+ *       this causes issues in shortest_sub_net_dist
+ *       -1 is the shortest
+ *       when correcting this in gdb, message was sent to myself
+ * 
+ *       omg this is obvious, entries are never removed from sn 
+ * 
+*/
+
       send_prop_msg(sn, TEXT_COM, sn->me->uid, uid, msg, strlen(msg));
 }
 
@@ -167,7 +182,6 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                   break;
             }
             case MSG_BROKEN:
-                  /* TODO: remove node from direct peers and decrement rta->sn; */
                   rta->sock = -1;
                   return 0;
             case ADDR_REQ:
@@ -242,11 +256,32 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
       return 1;
 }
 
+/* TODO: it's important that we have a mutex lock
+ * for sn
+ */
+/* removes peer with uid uid, also removes any peer
+ * with -1 as sock
+ */
+int sn_remove_direct_peer(struct sub_net* sn, int uid){
+      int n_removed = 0;
+      for(int i = 0; i < sn->n_direct; ++i){
+            if(sn->direct_peers[i]->uid == uid || sn->direct_peers[i]->sock == -1){
+                  --i;
+                  memmove(sn->direct_peers+i, sn->direct_peers+i+1, sizeof(struct node*)*(sn->n_direct-i));
+                  ++n_removed;
+            }
+      }
+      return n_removed;
+}
+
 void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
       struct msg m; 
 
       while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));
+
+      /* this implicitly removes broken connection by removing all peers with sock -1 */
+      sn_remove_direct_peer(rta->sn, -100);
       return NULL;
 }
 
