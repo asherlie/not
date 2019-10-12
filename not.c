@@ -209,6 +209,16 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                          * connect sock should use a new socket each time
                          * that it creates and listen()s
                         */
+
+/*
+ *                          all users should accept connections from strangers
+ *                          upon receiving a uid assignment request, connectee will
+ *                          instead senda  MN_REROUTE message directing NN to
+ *                          the designated MN
+ *                          upon receiving an MN_REROUTE, an NN will re-request a uid
+ *                          assignmnent
+ * 
+*/
                         connect_sock(rta->me, rp.loop_addr, rp.loop_uid, rta->sn);
                   }
 
@@ -282,7 +292,10 @@ void* read_th(void* rta_v){
       while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));
 
       /* this implicitly removes broken connection by removing all peers with sock -1 */
-      sn_remove_direct_peer(rta->sn, -100);
+
+      /* rta->sn can be NULL if thread was added ny NN connecting to MN */
+      /* this happens in join_network() */
+      if(rta->sn)sn_remove_direct_peer(rta->sn, -100);
       return NULL;
 }
 
@@ -353,6 +366,7 @@ void* accept_th(void* arg_v){
                   /* TODO: free */
                   struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
                   rta->sn = arg->sn;
+                  printf("accept_th sn pointer: %p\n", (void*)rta->sn);
                   rta->sock = peer_sock;
                   rta->me = arg->me;
                   rta->master_node = arg->master_node;
