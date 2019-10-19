@@ -231,7 +231,7 @@ void* read_th(void* rta_v){
 
       /* rta->sn can be NULL if thread was added ny NN connecting to MN */
       /* this happens in join_network() */
-      if(rta->sn)sn_remove_direct_peer(rta->sn, -100);
+      if(rta->sn)sn_purge(rta->sn);
       return NULL;
 }
 

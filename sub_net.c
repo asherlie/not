@@ -35,24 +35,3 @@ int sn_purge(struct sub_net* sn){
       }
       return 0;
 }
-
-/* TODO: it's important that we have a mutex lock
- * for sn
- */
-/* removes peer with uid uid, also removes any peer
- * with -1 as sock
- */
-int sn_remove_direct_peer(struct sub_net* sn, int uid){
-      /* sn may be NULL during handshake */
-      if(!sn)return -1;
-      int n_removed = 0;
-      for(int i = 0; i < sn->n_direct; ++i){
-            if(sn->direct_peers[i]->uid == uid || sn->direct_peers[i]->sock == -1){
-                  memmove(sn->direct_peers+i, sn->direct_peers+i+1, sizeof(struct node*)*sn->n_direct-i-1);
-                  --i;
-                  --sn->n_direct;
-                  ++n_removed;
-            }
-      }
-      return n_removed;
-}
