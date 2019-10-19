@@ -171,6 +171,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
 
 /* pp_opt is used only for recursive calls once prop msg reaches dest */
 _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt){
+      memset(m.buf, 0, m.buf_sz);
       switch(m.type){
             case NEW_PEER_UID:{
                   if(m.buf_sz != sizeof(int))return 1;
@@ -527,21 +528,8 @@ int main(int a, char** b){
       pthread_create(&accept_pth, NULL, accept_th, ata);
       pthread_detach(accept_pth);
 
-      /*join_network(&sn.me, b[2], local_sock);*/
-      /* should this connector sock have the ip i want ppl to connect
-       * to when they hit me up?
-       * after i request a formal connection
-       * yes, right
-       * can two socks have same addr
-       */
       if(!ata->master_node)
             join_network(sn.me, b[1]);
-
-      /*
-       * while(1){
-       *       getchar()
-       * }
-      */
 
       char* ln = NULL;
       size_t sz;
