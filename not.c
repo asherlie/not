@@ -284,8 +284,17 @@ _Bool sock_connected(int sock){
       return send_msg(sock, CONN_CHECK, NULL, 0);
 }
 
+void sn_remove(struct sub_net* sn, int ind){
+      memmove(sn->direct_peers+ind, sn->direct_peers+ind+1, sizeof(struct node*)*sn->n_direct-ind-1);
+      --sn->n_direct;
+}
+
 int sn_purge(struct sub_net* sn){
-      (void)sn;
+      for(int i = 0; i < sn->n_direct; ++i){
+            if(!sock_connected(sn->direct_peers[i]->sock)){
+                  sn_remove(sn, i--);
+            }
+      }
       return 0;
 }
 
