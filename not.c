@@ -115,25 +115,27 @@ void msg_queue_init(struct msg_queue* mq){
       pthread_mutex_init(&mq->lock, NULL);
       mq->n_msgs = 0;
       mq->msg_cap = 100;
-      mq->msgs = malloc(mq->msg_cap*sizeof(char*));
+      mq->msgs = malloc(mq->msg_cap*sizeof(struct mq_entry));
 }
 
-void msg_queue_insert(struct msg_queue* mq, char* msg){
+void msg_queue_insert(struct msg_queue* mq, char* msg, int sender_uid){
       pthread_mutex_lock(&mq->lock);
       if(mq->n_msgs == mq->msg_cap){
             mq->msg_cap *= 2;
-            char** tmp_msg = malloc(mq->msg_cap*sizeof(char*));
-            memcpy(tmp_msg, mq->msgs, mq->n_msgs*sizeof(char*));
+            /*char** tmp_msg = malloc(mq->msg_cap*sizeof(char*));*/
+            struct mq_entry* tmp_msg = malloc(mq->msg_cap*sizeof(struct mq_entry));
+            memcpy(tmp_msg, mq->msgs, mq->n_msgs*sizeof(struct mq_entry));
             free(mq->msgs);
             mq->msgs = tmp_msg;
       }
-      mq->msgs[mq->n_msgs++] = msg;
+      mq->msgs[mq->n_msgs].msg = msg;
+      mq->msgs[mq->n_msgs++].sender = sender_uid;
       pthread_mutex_unlock(&mq->lock);
 }
 
-char* msg_queue_pop(struct msg_queue* mq){
+struct mq_entry* msg_queue_pop(struct msg_queue* mq){
       pthread_mutex_lock(&mq->lock);
-      char* ret = mq->msgs[--mq->n_msgs];
+      struct mq_entry* ret = (mq->n_msgs) ? &mq->msgs[--mq->n_msgs] : NULL;
       pthread_mutex_unlock(&mq->lock);
       return ret;
 }
@@ -253,7 +255,8 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                   */
                   char* mstr = malloc(m.buf_sz*sizeof(char));
                   memcpy(mstr, m.buf, m.buf_sz*sizeof(char));
-                  msg_queue_insert(rta->sn->mq, mstr);
+                  msg_queue_insert(rta->sn->mq, mstr, pp_opt->sender_uid);
+                  /*printf("got message from %i: %s\n", pp_opt->sender_uid, (char*)m.buf);*/
             }
       }
       return 1;
@@ -424,13 +427,17 @@ void join_network(struct node* me, char* master_addr){
       close(master_sock);
 }
 
-/* this thread can be killed by pushing NULL to the message queue */
+/* this thread can be killed by setting mq->msgs to NULL */
 void* msg_print_th(void* mqv){
       struct msg_queue* mq = (struct msg_queue*)mqv;
-      char* msg;
-      while((msg = msg_queue_pop(mq))){
-            printf("msg: %s%s%s\n", ANSI_BLU, msg, ANSI_NON);
-            free(msg);
+      struct mq_entry* msg;
+      /*while((msg = msg_queue_pop(mq))){*/
+      while(mq->msgs){
+            msg = msg_queue_pop(mq);
+            if(msg){
+                  printf("%i: %s%s%s\n", msg->sender, ANSI_BLU, msg->msg, ANSI_NON);
+                  free(msg->msg);
+            }
             usleep(1e4);
       }
       return NULL;
@@ -495,7 +502,7 @@ int main(int a, char** b){
       pthread_create(&accept_pth, NULL, accept_th, ata);
       pthread_detach(accept_pth);
 
-      /* TODO: msg_queue_insert(NULL) and pthread_join() */
+      /* TODO: set mq->msgs to NULL and pthread_join() */
       pthread_t msg_print_pth;
       pthread_create(&msg_print_pth, NULL, msg_print_th, (void*)sn.mq);
 

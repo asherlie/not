@@ -52,10 +52,15 @@ struct prop_pkg{
       char dest_buf[200];
 };
 
+struct mq_entry{
+      char* msg;
+      int sender;
+};
+
 struct msg_queue{
       pthread_mutex_t lock;
       int n_msgs, msg_cap; 
-      char** msgs;
+      struct mq_entry* msgs;
 };
 
 /* arguments */
