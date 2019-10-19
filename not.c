@@ -296,7 +296,10 @@ void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
       struct msg m; 
 
-      while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));
+      /*while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));*/
+      /*while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));*/
+      while(handle_msg((m = read_msg(rta->sock)), rta, NULL));
+      /*while(&(m = read_msg(rta->sock)) && handle_msg())*/
 
       /* this implicitly removes broken connection by removing all peers with sock -1 */
 
