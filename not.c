@@ -9,24 +9,13 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 
-/*#include "not.h"*/
+#include "node.h"
+#include "sub_net.h"
 #include "peercalc.h"
 #include "shared.h"
 
 pthread_mutex_t uid_lock;
 int UID_ASN = 0;
-
-/* spec:
- *    for REQ
- *          buf contains a struct request_package
- *          buf contains ip of final destination k
- */
-_Bool send_msg(int sock, msgtype_t msgtype, void* buf, int buf_sz){
-      return
-      send(sock, &msgtype, sizeof(msgtype_t), 0) != -1 &&
-      send(sock, &buf_sz, sizeof(int), 0) != -1 &&
-      send(sock, buf, buf_sz, 0) != -1;
-}
 
 
 /* TODO: what happens when an internal node disconnects? */
@@ -65,20 +54,6 @@ struct msg read_msg(int sock){
 /* end host */
 
 /* node/net operations */
-struct node* create_node(int uid, struct in_addr addr, int sock){
-      struct node* ret = malloc(sizeof(struct node));
-      ret->uid = uid;
-      ret->addr = addr;
-      ret->sock = sock;
-      return ret;
-}
-
-void init_sub_net(struct sub_net* sn){
-      sn->n_direct = 0;
-      sn->direct_cap = 20;
-      sn->direct_peers = malloc(sizeof(struct node*)*sn->direct_cap);
-}
-
 /* sock is socket of master node, uid is uid of target peer
  * target peer will join addr
  */
@@ -89,26 +64,6 @@ void request_connection(int sock, int uid, int initiator_uid, struct in_addr add
       rp.loop_addr = addr;
       rp.loop_uid = initiator_uid;
       send_msg(sock, CON_REQ, &rp, sizeof(struct request_package));
-}
-
-/* TODO: we need a mutex lock on sn */
-struct node* shortest_sub_net_dist(struct sub_net* sn, int dest_uid){
-       /*
-        * check if sock == -1
-        * socks will be set to -1 by handler if MSG_BROKEN
-       */
-       /* TODO: use a less naive approach */
-       if(!sn->n_direct)return NULL;
-       int dist, min = abs(dest_uid-sn->direct_peers[0]->uid);
-       struct node* min_n = sn->direct_peers[0];
-       for(int i = 1; i < sn->n_direct; ++i){
-            dist = abs(dest_uid-sn->direct_peers[i]->uid);
-            if(sn->direct_peers[i]->sock != -1 && dist < min){
-                  min = dist;
-                  min_n = sn->direct_peers[i];
-            }
-       }
-       return min_n;
 }
 
 _Bool send_prop_msg(struct sub_net* sn, msgtype_t msgtype, int sender_uid, 
@@ -153,18 +108,6 @@ void send_txt_msg(struct sub_net* sn, int uid, char* msg){
 */
 
       send_prop_msg(sn, TEXT_COM, sn->me->uid, uid, msg, strlen(msg));
-}
-
-void sn_insert_direct_peer(struct sub_net* sn, int uid, struct in_addr inet_addr, int peer_sock){
-      /* TODO: pthread_mutex_lock() */
-      if(sn->n_direct == sn->direct_cap){
-            sn->direct_cap *= 2;
-            struct node** tmp_n = malloc(sizeof(struct node*)*sn->direct_cap);
-            memcpy(tmp_n, sn->direct_peers, sizeof(struct node*)*sn->n_direct);
-            free(sn->direct_peers);
-            sn->direct_peers = tmp_n;
-      }
-      sn->direct_peers[sn->n_direct++] = create_node(uid, inet_addr, peer_sock);
 }
 
 /* forward declaration */
@@ -277,46 +220,6 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                   printf("got message from %i: %s\n", pp_opt->sender_uid, (char*)m.buf);
       }
       return 1;
-}
-
-_Bool sock_connected(int sock){
-      if(sock == -1)return 0;
-      return send_msg(sock, CONN_CHECK, NULL, 0);
-}
-
-void sn_remove(struct sub_net* sn, int ind){
-      memmove(sn->direct_peers+ind, sn->direct_peers+ind+1, sizeof(struct node*)*sn->n_direct-ind-1);
-      --sn->n_direct;
-}
-
-int sn_purge(struct sub_net* sn){
-      for(int i = 0; i < sn->n_direct; ++i){
-            if(!sock_connected(sn->direct_peers[i]->sock)){
-                  sn_remove(sn, i--);
-            }
-      }
-      return 0;
-}
-
-/* TODO: it's important that we have a mutex lock
- * for sn
- */
-/* removes peer with uid uid, also removes any peer
- * with -1 as sock
- */
-int sn_remove_direct_peer(struct sub_net* sn, int uid){
-      /* sn may be NULL during handshake */
-      if(!sn)return -1;
-      int n_removed = 0;
-      for(int i = 0; i < sn->n_direct; ++i){
-            if(sn->direct_peers[i]->uid == uid || sn->direct_peers[i]->sock == -1){
-                  memmove(sn->direct_peers+i, sn->direct_peers+i+1, sizeof(struct node*)*sn->n_direct-i-1);
-                  --i;
-                  --sn->n_direct;
-                  ++n_removed;
-            }
-      }
-      return n_removed;
 }
 
 void* read_th(void* rta_v){

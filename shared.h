@@ -1,13 +1,10 @@
+#include "node.h"
+
 #define PORT 2390
 
 typedef enum msgtype {
       CON_REQ = 0, ADDR_REQ, ADDR_ALERT, UID_REQ, UID_ALERT, MSG_BROKEN, PROP_MSG, TEXT_COM, NEW_PEER_UID, CONN_CHECK
       }msgtype_t;
-
-struct node{
-      int uid, sock;
-      struct in_addr addr;
-};
 
 /*
  * i connect to master node, request uid from master node
@@ -25,14 +22,6 @@ struct node{
  * once the message gets to the recipient, recipient will connect to my address
  * recipient adds my information to their struct sub_net in the form of a node with my socket and uid
 */
-
-
-struct sub_net{
-      //pthread_mutex_t 
-      int n_direct, direct_cap;
-      struct node** direct_peers;
-      struct node* me;
-};
 
 struct msg{
       msgtype_t type;
@@ -80,3 +69,5 @@ struct read_th_arg{
 struct thrad_cont{
       void* x;
 };
+
+_Bool send_msg(int sock, msgtype_t msgtype, void* buf, int buf_sz);
