@@ -288,13 +288,6 @@ int sn_remove_direct_peer(struct sub_net* sn, int uid){
       int n_removed = 0;
       for(int i = 0; i < sn->n_direct; ++i){
             if(sn->direct_peers[i]->uid == uid || sn->direct_peers[i]->sock == -1){
-                  /*
-                   * --i;
-                   * memmove(sn->direct_peers+i, sn->direct_peers+i+1, sizeof(struct node*)*(sn->n_direct-i));
-                   * --sn->direct_peers;
-                   * ++n_removed;
-                  */
-
                   memmove(sn->direct_peers+i, sn->direct_peers+i+1, sizeof(struct node*)*sn->n_direct-i-1);
                   --i;
                   --sn->n_direct;
@@ -306,13 +299,8 @@ int sn_remove_direct_peer(struct sub_net* sn, int uid){
 
 void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
-      /*struct msg m; */
 
-      /*while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));*/
-      /*while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));*/
-      /*while(handle_msg((m = read_msg(rta->sock)), rta, NULL));*/
       while(handle_msg(read_msg(rta->sock), rta, NULL));
-      /*while(&(m = read_msg(rta->sock)) && handle_msg())*/
 
       /* this implicitly removes broken connection by removing all peers with sock -1 */
 
@@ -329,7 +317,6 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
       struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
       rta->sock = me->sock;
 
-      // uhh clean this up
       rta->sock = socket(AF_INET, SOCK_STREAM, 0);
       rta->sn = sn;
 
@@ -340,12 +327,9 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
       addr.sin_port = PORT;
       addr.sin_addr = inet_addr;
 
-      /*connect(me->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));*/
       connect(rta->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
 
-      if(sn){
-            sn_insert_direct_peer(sn, uid, inet_addr, rta->sock);
-      }
+      if(sn)sn_insert_direct_peer(sn, uid, inet_addr, rta->sock);
 
       /* rta->sock is redundant */
       /*nvm don't do this - new socket should be returned*/
