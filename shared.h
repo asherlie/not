@@ -2,6 +2,12 @@
 
 #define PORT 2390
 
+#define ANSI_RED   "\x1B[31m"
+#define ANSI_NON   "\x1b[0m"
+#define ANSI_GRE   "\x1b[32m"
+#define ANSI_BLU   "\x1b[34m"
+#define ANSI_MGNTA "\x1b[35m"
+
 typedef enum msgtype {
       CON_REQ = 0, ADDR_REQ, ADDR_ALERT, UID_REQ, UID_ALERT, MSG_BROKEN, PROP_MSG, TEXT_COM, NEW_PEER_UID, CONN_CHECK
       }msgtype_t;

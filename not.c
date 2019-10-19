@@ -401,6 +401,10 @@ void queue_msg(struct sub_net* sn, int uid, char* ln){
       /*send_msg();*/
 }
 
+void print_error(char* str){
+      printf("%s%s%s\n", ANSI_RED, str, ANSI_NON);
+}
+
 int main(int a, char** b){
       if(a != 2)return EXIT_FAILURE;
       /* TODO: destroy this */
@@ -462,17 +466,24 @@ int main(int a, char** b){
       while((len = getline(&ln, &sz, stdin)) != EOF){
             ln[--len] = 0;
             /*queue_msg(ln);*/
-            for(i = ln; *i && *i != ' '; ++i);
-            if(!*i)continue;
+            switch(*ln){
+                  /* [i]nfo */
+                  case 'i':
+                        printf("%i direct peers\n", sn.n_direct);
+                        break;
+                  case '0': case '1': case '2':
+                  case '3': case '4': case '5':
+                  case '6': case '7': case '8': case '9':{
+                        for(i = ln; *i && *i != ' '; ++i);
+                        if(!*i)continue;
 
-            int uid = atoi(ln);
-            char* msg = i+1;
+                        int uid = atoi(ln);
+                        char* msg = i+1;
 
-            printf("n peers: %i\n", sn.n_direct);
-            printf("sending msg: %s to %i\n", msg, uid);
-            if(!send_txt_msg(&sn, uid, msg))printf("failed to find a route for message\n");
-
-            /*queue_msg(&sn, uid, ln);*/
-            /*printf("%i direct peers\n", sn.n_direct);*/
+                        printf("sending msg: %s to %i\n", msg, uid);
+                        if(!send_txt_msg(&sn, uid, msg))print_error("failed to find a route to recipient");
+                  }
+            }
       }
+      return 0;
 }
