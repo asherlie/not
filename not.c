@@ -182,7 +182,10 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                   break;
             }
             case MSG_BROKEN:{
+                  /* this can occur during handshake */
+                  if(!rta->sn)break;
                   for(int i = 0; i < rta->sn->n_direct; ++i){
+                        /* why is sn NULL? */
                         if(rta->sn->direct_peers[i]->sock == rta->sock){
                               rta->sn->direct_peers[i]->sock = -1;
                               break;
@@ -280,12 +283,21 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
  * with -1 as sock
  */
 int sn_remove_direct_peer(struct sub_net* sn, int uid){
+      /* sn may be NULL during handshake */
+      if(!sn)return -1;
       int n_removed = 0;
       for(int i = 0; i < sn->n_direct; ++i){
             if(sn->direct_peers[i]->uid == uid || sn->direct_peers[i]->sock == -1){
+                  /*
+                   * --i;
+                   * memmove(sn->direct_peers+i, sn->direct_peers+i+1, sizeof(struct node*)*(sn->n_direct-i));
+                   * --sn->direct_peers;
+                   * ++n_removed;
+                  */
+
+                  memmove(sn->direct_peers+i, sn->direct_peers+i+1, sizeof(struct node*)*sn->n_direct-i-1);
                   --i;
-                  memmove(sn->direct_peers+i, sn->direct_peers+i+1, sizeof(struct node*)*(sn->n_direct-i));
-                  --sn->direct_peers;
+                  --sn->n_direct;
                   ++n_removed;
             }
       }
@@ -294,11 +306,12 @@ int sn_remove_direct_peer(struct sub_net* sn, int uid){
 
 void* read_th(void* rta_v){
       struct read_th_arg* rta = (struct read_th_arg*)rta_v;
-      struct msg m; 
+      /*struct msg m; */
 
       /*while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));*/
       /*while(((m = read_msg(rta->sock)).type != MSG_BROKEN) && handle_msg(m, rta, NULL));*/
-      while(handle_msg((m = read_msg(rta->sock)), rta, NULL));
+      /*while(handle_msg((m = read_msg(rta->sock)), rta, NULL));*/
+      while(handle_msg(read_msg(rta->sock), rta, NULL));
       /*while(&(m = read_msg(rta->sock)) && handle_msg())*/
 
       /* this implicitly removes broken connection by removing all peers with sock -1 */
@@ -415,7 +428,9 @@ void join_network(struct node* me, char* master_addr){
        * or just detach them and have them stop running once reading a -1
       */
       /* this connects and starts a read thread */
+      /*subnet is NULL in this call*/
       int master_sock = connect_sock(me, addr, -1, NULL);
+      /*int master_sock = connect_sock(me, addr, -1, sn);*/
 
       send_msg(master_sock, UID_REQ, NULL, 0);
       /*
@@ -460,7 +475,8 @@ void join_network(struct node* me, char* master_addr){
             */
             request_connection(master_sock, to_conn[i], me->uid, me->addr);
       }
-      shutdown(master_sock, 2);
+      close(master_sock);
+      /*shutdown(master_sock, 2);*/
 }
 
 /* TODO: add a queue structure for sending messages */
@@ -510,7 +526,7 @@ int main(int a, char** b){
       s_addr.sin_addr.s_addr = INADDR_ANY;
 
       if(bind(local_sock, (struct sockaddr*)&s_addr, sizeof(struct sockaddr_in)) == -1){
-            shutdown(local_sock, 2);
+            close(local_sock);
             perror("bind");
             exit(EXIT_FAILURE);
       }
