@@ -1,3 +1,6 @@
+#ifndef _SHARED_H
+#define _SHARED_H
+
 #include "node.h"
 
 #define PORT 2390
@@ -49,6 +52,12 @@ struct prop_pkg{
       char dest_buf[200];
 };
 
+struct msg_queue{
+      pthread_mutex_t lock;
+      int n_msgs, msg_cap; 
+      char** msgs;
+};
+
 /* arguments */
 
 /* these two structs can be consolidated */
@@ -77,3 +86,4 @@ struct thrad_cont{
 };
 
 _Bool send_msg(int sock, msgtype_t msgtype, void* buf, int buf_sz);
+#endif

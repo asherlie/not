@@ -110,6 +110,35 @@ _Bool send_txt_msg(struct sub_net* sn, int uid, char* msg){
       return send_prop_msg(sn, TEXT_COM, sn->me->uid, uid, msg, strlen(msg));
 }
 
+/* msg queue */
+void msg_queue_init(struct msg_queue* mq){
+      pthread_mutex_init(&mq->lock, NULL);
+      mq->n_msgs = 0;
+      mq->msg_cap = 100;
+      mq->msgs = malloc(mq->msg_cap*sizeof(char*));
+}
+
+void msg_queue_insert(struct msg_queue* mq, char* msg){
+      pthread_mutex_lock(&mq->lock);
+      if(mq->n_msgs == mq->msg_cap){
+            mq->msg_cap *= 2;
+            char** tmp_msg = malloc(mq->msg_cap*sizeof(char*));
+            memcpy(tmp_msg, mq->msgs, mq->n_msgs*sizeof(char*));
+            free(mq->msgs);
+            mq->msgs = tmp_msg;
+      }
+      mq->msgs[mq->n_msgs++] = msg;
+      pthread_mutex_unlock(&mq->lock);
+}
+
+char* msg_queue_pop(struct msg_queue* mq){
+      pthread_mutex_lock(&mq->lock);
+      char* ret = mq->msgs[--mq->n_msgs];
+      pthread_mutex_unlock(&mq->lock);
+      return ret;
+}
+/* /msg queue */
+
 /* forward declaration */
 int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_net* sn);
 
@@ -216,13 +245,18 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
             }
             case CONN_CHECK:
                   break;
-            case TEXT_COM:
+            case TEXT_COM:{
                   /*
                    * add this to mutex locked message queue
                    * another thread will pop them off and pretty print them
                    * no io from this thread
                   */
+                  char* mstr = malloc(m.buf_sz*sizeof(char));
+                  memcpy(mstr, m.buf, m.buf_sz*sizeof(char));
+                  /*msg_queue_insert(rta->mq, mstr);*/
+                  msg_queue_insert(rta->sn->mq, mstr);
                   printf("got message from %i: %s\n", pp_opt->sender_uid, (char*)m.buf);
+            }
       }
       return 1;
 }
@@ -392,41 +426,6 @@ void join_network(struct node* me, char* master_addr){
       close(master_sock);
 }
 
-/* msg queue */
-struct msg_queue{
-      pthread_mutex_t lock;
-      int n_msgs, msg_cap; 
-      char** msgs;
-};
-
-void msg_queue_init(struct msg_queue* mq){
-      pthread_mutex_init(&mq->lock, NULL);
-      mq->n_msgs = 0;
-      mq->msg_cap = 100;
-      mq->msgs = malloc(mq->msg_cap*sizeof(char*));
-}
-
-void msg_queue_insert(struct msg_queue* mq, char* msg){
-      pthread_mutex_lock(&mq->lock);
-      if(mq->n_msgs == mq->msg_cap){
-            mq->msg_cap *= 2;
-            char** tmp_msg = malloc(mq->msg_cap*sizeof(char*));
-            memcpy(tmp_msg, mq->msgs, mq->n_msgs*sizeof(char*));
-            free(mq->msgs);
-            mq->msgs = tmp_msg;
-      }
-      mq->msgs[mq->n_msgs++] = msg;
-      pthread_mutex_unlock(&mq->lock);
-}
-
-char* msg_queue_pop(struct msg_queue* mq){
-      pthread_mutex_lock(&mq->lock);
-      char* ret = mq->msgs[--mq->n_msgs];
-      pthread_mutex_unlock(&mq->lock);
-      return ret;
-}
-/* /msg queue */
-
 /* TODO: add a queue structure for sending messages */
 /* wait - possibly only need a queue to receive them
  * sending messages occurs within a repl and is limited
@@ -453,11 +452,15 @@ int main(int a, char** b){
       struct sub_net sn;
       init_sub_net(&sn);
 
+      sn.mq = malloc(sizeof(struct msg_queue));
+      msg_queue_init(sn.mq);
+
       /* does this need to be on the heap? */
       struct accept_th_arg* ata = malloc(sizeof(struct accept_th_arg));
       /*struct accept_th_arg ata;*/
       ata->local_sock = local_sock;
       ata->sn = &sn;
+
       /* expecting ./not -m <ip> */
       /*ata.master_node = a == 3;*/
       ata->master_node = *b[1] == '-';

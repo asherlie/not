@@ -1,6 +1,7 @@
 #ifndef _SUB_NET_H
 #define _SUB_NET_H
 
+#include "shared.h"
 #include <netinet/in.h>
 
 struct sub_net{
@@ -8,6 +9,8 @@ struct sub_net{
       int n_direct, direct_cap;
       struct node** direct_peers;
       struct node* me;
+
+      struct msg_queue* mq;
 };
 
 void init_sub_net(struct sub_net* sn);
