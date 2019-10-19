@@ -90,7 +90,7 @@ _Bool send_prop_msg(struct sub_net* sn, msgtype_t msgtype, int sender_uid,
       return 1;
 }
 
-void send_txt_msg(struct sub_net* sn, int uid, char* msg){
+_Bool send_txt_msg(struct sub_net* sn, int uid, char* msg){
       /* TODO: don't use strlen */
 /*
  *       concern:
@@ -107,7 +107,7 @@ void send_txt_msg(struct sub_net* sn, int uid, char* msg){
  * 
 */
 
-      send_prop_msg(sn, TEXT_COM, sn->me->uid, uid, msg, strlen(msg));
+      return send_prop_msg(sn, TEXT_COM, sn->me->uid, uid, msg, strlen(msg));
 }
 
 /* forward declaration */
@@ -470,7 +470,7 @@ int main(int a, char** b){
 
             printf("n peers: %i\n", sn.n_direct);
             printf("sending msg: %s to %i\n", msg, uid);
-            send_txt_msg(&sn, uid, msg);
+            if(!send_txt_msg(&sn, uid, msg))printf("failed to find a route for message\n");
 
             /*queue_msg(&sn, uid, ln);*/
             /*printf("%i direct peers\n", sn.n_direct);*/
