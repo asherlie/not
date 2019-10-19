@@ -21,10 +21,11 @@ int UID_ASN = 0;
  *          buf contains a struct request_package
  *          buf contains ip of final destination k
  */
-void send_msg(int sock, msgtype_t msgtype, void* buf, int buf_sz){
-      send(sock, &msgtype, sizeof(msgtype_t), 0);
-      send(sock, &buf_sz, sizeof(int), 0);
-      send(sock, buf, buf_sz, 0);
+_Bool send_msg(int sock, msgtype_t msgtype, void* buf, int buf_sz){
+      return
+      send(sock, &msgtype, sizeof(msgtype_t), 0) != -1 &&
+      send(sock, &buf_sz, sizeof(int), 0) != -1 &&
+      send(sock, buf, buf_sz, 0) != -1;
 }
 
 
@@ -270,10 +271,22 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                   }
                   break;
             }
+            case CONN_CHECK:
+                  break;
             case TEXT_COM:
                   printf("got message from %i: %s\n", pp_opt->sender_uid, (char*)m.buf);
       }
       return 1;
+}
+
+_Bool sock_connected(int sock){
+      if(sock == -1)return 0;
+      return send_msg(sock, CONN_CHECK, NULL, 0);
+}
+
+int sn_purge(struct sub_net* sn){
+      (void)sn;
+      return 0;
 }
 
 /* TODO: it's important that we have a mutex lock
