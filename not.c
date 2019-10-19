@@ -171,7 +171,6 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
 
 /* pp_opt is used only for recursive calls once prop msg reaches dest */
 _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt){
-      memset(m.buf, 0, m.buf_sz);
       switch(m.type){
             case NEW_PEER_UID:{
                   if(m.buf_sz != sizeof(int))return 1;
@@ -533,7 +532,6 @@ int main(int a, char** b){
 
       char* ln = NULL;
       size_t sz;
-      puts("RE");
       char* i;
       int len;
       while((len = getline(&ln, &sz, stdin)) != EOF){
