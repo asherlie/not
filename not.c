@@ -181,9 +181,16 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                   sn_insert_direct_peer(rta->sn, uid, dummy_addr, rta->sock);
                   break;
             }
-            case MSG_BROKEN:
-                  rta->sock = -1;
+            case MSG_BROKEN:{
+                  for(int i = 0; i < rta->sn->n_direct; ++i){
+                        if(rta->sn->direct_peers[i]->sock == rta->sock){
+                              rta->sn->direct_peers[i]->sock = -1;
+                              break;
+                        }
+                  }
+                  /*mn can't send itself a message*/
                   return 0;
+            }
             case ADDR_REQ:
                   if(!rta->master_node)return 1;
                   send_msg(rta->sock, ADDR_ALERT, &rta->peer_addr, sizeof(struct in_addr));
@@ -508,7 +515,8 @@ int main(int a, char** b){
       ata->me = sn.me = create_node(
                                     (ata->master_node) ? assign_uid() : -1,
                                     s_addr.sin_addr,
-                                    (ata->master_node) ? local_sock : socket(AF_INET, SOCK_STREAM, 0)
+                                    /*(ata->master_node) ? local_sock : socket(AF_INET, SOCK_STREAM, 0)*/
+                                    local_sock
                                    );
       printf("addr: %i\n", (int)s_addr.sin_addr.s_addr);
 
