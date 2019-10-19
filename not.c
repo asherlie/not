@@ -217,6 +217,11 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
             case CONN_CHECK:
                   break;
             case TEXT_COM:
+                  /*
+                   * add this to mutex locked message queue
+                   * another thread will pop them off and pretty print them
+                   * no io from this thread
+                  */
                   printf("got message from %i: %s\n", pp_opt->sender_uid, (char*)m.buf);
       }
       return 1;
@@ -385,8 +390,42 @@ void join_network(struct node* me, char* master_addr){
             request_connection(master_sock, to_conn[i], me->uid, me->addr);
       }
       close(master_sock);
-      /*shutdown(master_sock, 2);*/
 }
+
+/* msg queue */
+struct msg_queue{
+      pthread_mutex_t lock;
+      int n_msgs, msg_cap; 
+      char** msgs;
+};
+
+void msg_queue_init(struct msg_queue* mq){
+      pthread_mutex_init(&mq->lock, NULL);
+      mq->n_msgs = 0;
+      mq->msg_cap = 100;
+      mq->msgs = malloc(mq->msg_cap*sizeof(char*));
+}
+
+void msg_queue_insert(struct msg_queue* mq, char* msg){
+      pthread_mutex_lock(&mq->lock);
+      if(mq->n_msgs == mq->msg_cap){
+            mq->msg_cap *= 2;
+            char** tmp_msg = malloc(mq->msg_cap*sizeof(char*));
+            memcpy(tmp_msg, mq->msgs, mq->n_msgs*sizeof(char*));
+            free(mq->msgs);
+            mq->msgs = tmp_msg;
+      }
+      mq->msgs[mq->n_msgs++] = msg;
+      pthread_mutex_unlock(&mq->lock);
+}
+
+char* msg_queue_pop(struct msg_queue* mq){
+      pthread_mutex_lock(&mq->lock);
+      char* ret = mq->msgs[--mq->n_msgs];
+      pthread_mutex_unlock(&mq->lock);
+      return ret;
+}
+/* /msg queue */
 
 /* TODO: add a queue structure for sending messages */
 /* wait - possibly only need a queue to receive them
@@ -465,10 +504,12 @@ int main(int a, char** b){
       int len;
       while((len = getline(&ln, &sz, stdin)) != EOF){
             ln[--len] = 0;
-            /*queue_msg(ln);*/
             switch(*ln){
                   /* [i]nfo */
                   case 'i':
+                        /* this information can be incorrect if sn_purge 
+                         * hasn't been called yet
+                         */
                         printf("%i direct peers\n", sn.n_direct);
                         break;
                   case '0': case '1': case '2':
