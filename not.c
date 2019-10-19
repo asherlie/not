@@ -253,9 +253,7 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                   */
                   char* mstr = malloc(m.buf_sz*sizeof(char));
                   memcpy(mstr, m.buf, m.buf_sz*sizeof(char));
-                  /*msg_queue_insert(rta->mq, mstr);*/
                   msg_queue_insert(rta->sn->mq, mstr);
-                  printf("got message from %i: %s\n", pp_opt->sender_uid, (char*)m.buf);
             }
       }
       return 1;
@@ -426,17 +424,16 @@ void join_network(struct node* me, char* master_addr){
       close(master_sock);
 }
 
-/* TODO: add a queue structure for sending messages */
-/* wait - possibly only need a queue to receive them
- * sending messages occurs within a repl and is limited
- * by the user 
- * we need a queue for receiving many messages concurrently
- */
-void queue_msg(struct sub_net* sn, int uid, char* ln){
-      struct node* closest = shortest_sub_net_dist(sn, uid);
-      (void)closest;
-      (void)ln;
-      /*send_msg();*/
+/* this thread can be killed by pushing NULL to the message queue */
+void* msg_print_th(void* mqv){
+      struct msg_queue* mq = (struct msg_queue*)mqv;
+      char* msg;
+      while((msg = msg_queue_pop(mq))){
+            printf("msg: %s%s%s\n", ANSI_BLU, msg, ANSI_NON);
+            free(msg);
+            usleep(1e4);
+      }
+      return NULL;
 }
 
 void print_error(char* str){
@@ -497,6 +494,10 @@ int main(int a, char** b){
       pthread_t accept_pth;
       pthread_create(&accept_pth, NULL, accept_th, ata);
       pthread_detach(accept_pth);
+
+      /* TODO: msg_queue_insert(NULL) and pthread_join() */
+      pthread_t msg_print_pth;
+      pthread_create(&msg_print_pth, NULL, msg_print_th, (void*)sn.mq);
 
       if(!ata->master_node)
             join_network(sn.me, b[1]);
