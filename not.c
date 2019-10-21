@@ -286,7 +286,7 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
 
       struct sockaddr_in addr;
       addr.sin_family = AF_INET;
-      addr.sin_port = PORT;
+      addr.sin_port = htons(PORT);
       addr.sin_addr = inet_addr;
 
       connect(rta->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
