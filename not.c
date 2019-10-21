@@ -51,9 +51,6 @@ struct msg read_msg(int sock){
       return ret;
 }
 
-/* end host */
-
-/* node/net operations */
 /* sock is socket of master node, uid is uid of target peer
  * target peer will join addr
  */
@@ -310,7 +307,6 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
 }
 
 
-/* host */
 void* accept_th(void* arg_v){
       struct accept_th_arg* arg = (struct accept_th_arg*)arg_v;
       struct sockaddr_in addr;
@@ -338,7 +334,6 @@ void* accept_th(void* arg_v){
                   /* TODO: free */
                   struct read_th_arg* rta = malloc(sizeof(struct read_th_arg));
                   rta->sn = arg->sn;
-                  printf("accept_th sn pointer: %p\n", (void*)rta->sn);
                   rta->sock = peer_sock;
                   rta->me = arg->me;
                   rta->master_node = arg->master_node;
@@ -431,7 +426,6 @@ void join_network(struct node* me, char* master_addr){
 void* msg_print_th(void* mqv){
       struct msg_queue* mq = (struct msg_queue*)mqv;
       struct mq_entry* msg;
-      /*while((msg = msg_queue_pop(mq))){*/
       while(mq->msgs){
             msg = msg_queue_pop(mq);
             if(msg){
@@ -461,12 +455,10 @@ int main(int a, char** b){
 
       /* does this need to be on the heap? */
       struct accept_th_arg* ata = malloc(sizeof(struct accept_th_arg));
-      /*struct accept_th_arg ata;*/
+
       ata->local_sock = local_sock;
       ata->sn = &sn;
 
-      /* expecting ./not -m <ip> */
-      /*ata.master_node = a == 3;*/
       ata->master_node = *b[1] == '-';
 
       struct sockaddr_in s_addr;
@@ -532,7 +524,6 @@ int main(int a, char** b){
                         int uid = atoi(ln);
                         char* msg = i+1;
 
-                        printf("sending msg: %s to %i\n", msg, uid);
                         if(!send_txt_msg(&sn, uid, msg))print_error("failed to find a route to recipient");
                   }
             }

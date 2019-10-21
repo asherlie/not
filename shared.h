@@ -68,7 +68,6 @@ struct msg_queue{
 /* these two structs can be consolidated */
 struct accept_th_arg{
       _Bool master_node;
-      //int* pot_peers, pot_cap;
 
       int local_sock;
       struct node* me;
