@@ -13,10 +13,13 @@
 #include "sub_net.h"
 #include "peercalc.h"
 #include "shared.h"
+#include <signal.h>
 
 pthread_mutex_t uid_lock;
 int UID_ASN = 0;
 
+/* once user */
+int LOCAL_SOCK = -1;
 
 /* TODO: what happens when an internal node disconnects? */
 int assign_uid(){
@@ -40,6 +43,17 @@ struct msg read_msg(int sock){
              ret.type = MSG_BROKEN;
              return ret;
       }
+
+      /*
+       * ret.type = ntohl(ret.type);
+       * ret.type = ntohl(ret.type);
+      */
+
+      /* ntohl? htonl? */
+      /*
+       * ret.buf_sz = (ret.buf_sz);
+       * ret.buf_sz = (ret.buf_sz);
+      */
 
       /* free buf */
       if(ret.buf_sz){
@@ -155,7 +169,7 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
             }
             case MSG_BROKEN:{
                   /* this can occur during handshake */
-                  if(!rta->sn)break;
+                  if(!rta->sn)return 0;
                   for(int i = 0; i < rta->sn->n_direct; ++i){
                         /* why is sn NULL? */
                         if(rta->sn->direct_peers[i]->sock == rta->sock){
@@ -286,7 +300,9 @@ int connect_sock(struct node* me, struct in_addr inet_addr, int uid, struct sub_
 
       struct sockaddr_in addr;
       addr.sin_family = AF_INET;
-      addr.sin_port = htons(PORT);
+
+      /* htons? */
+      addr.sin_port = (PORT);
       addr.sin_addr = inet_addr;
 
       connect(rta->sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
@@ -441,11 +457,25 @@ void print_error(char* str){
       printf("%s%s%s\n", ANSI_RED, str, ANSI_NON);
 }
 
+void cleanup(){
+      close(LOCAL_SOCK);
+      exit(EXIT_SUCCESS);
+      /* TODO: free memory in sn, empty mq */
+}
+
 int main(int a, char** b){
       if(a != 2)return EXIT_FAILURE;
       /* TODO: destroy this */
       pthread_mutex_init(&uid_lock, NULL);
-      int local_sock = socket(AF_INET, SOCK_STREAM, 0);
+      int local_sock = LOCAL_SOCK = socket(AF_INET, SOCK_STREAM, 0);
+
+      {
+      int opt = 1;
+      setsockopt(local_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int));
+      }
+
+
+      signal(SIGINT, cleanup);
 
       struct sub_net sn;
       init_sub_net(&sn);
