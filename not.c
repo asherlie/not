@@ -177,7 +177,7 @@ _Bool handle_msg(struct msg m, struct read_th_arg* rta, struct prop_pkg* pp_opt)
                               break;
                         }
                   }
-                  /*mn can't send itself a message*/
+                  /* mn can't send itself a message */
                   return 0;
             }
             case ADDR_REQ:
@@ -282,6 +282,21 @@ void* read_th(void* rta_v){
 
       /* rta->sn can be NULL if thread was added ny NN connecting to MN */
       /* this happens in join_network() */
+
+      /* TODO: confirm this: */
+      /* the assumption is that every time a node disconnects, all direct
+       * peers of that node are alerted here
+       *
+       * if this assumption holds, we can take steps to repair the graph
+       * here - we can call a repair_sub_net() routine
+       * 
+       * otherwise,
+       *
+       * we could add some complexity and have a sub_net_repair thread
+       * this will check each `connected` peer and take steps to repair
+       * if connection is broken
+       */
+
       if(rta->sn)sn_purge(rta->sn);
       return NULL;
 }
